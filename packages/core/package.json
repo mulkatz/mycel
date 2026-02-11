@@ -10,12 +10,13 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^8.3.0",
     "@langchain/core": "^0.3.0",
     "@langchain/google-vertexai": "^0.2.0",
     "@langchain/langgraph": "^0.2.0",
-    "@mycel/shared": "*",
-    "@mycel/schemas": "*",
     "@mycel/ingestion": "*",
+    "@mycel/schemas": "*",
+    "@mycel/shared": "*",
     "zod": "^3.23.0",
     "zod-to-json-schema": "^3.23.0"
   },

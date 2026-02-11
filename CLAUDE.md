@@ -9,7 +9,7 @@ multi-agent system. The project is closed-source and proprietary.
 - TypeScript (strict mode) for all code
 - Node.js 20+ runtime
 - npm workspaces monorepo
-- GCP: Cloud Run, Vertex AI, Cloud Storage, Vector Search
+- GCP: Cloud Run, Vertex AI, Cloud Storage, Vector Search, Firestore
 - Terraform for infrastructure
 - LangGraph.js for agent orchestration
 - Zod for runtime schema validation
@@ -30,6 +30,9 @@ Monorepo with four packages:
 - **Gap-Analysis**: The system proactively identifies missing knowledge and asks
   follow-up questions.
 - **Separation of Concerns**: Engine, Domain, and Persona are strictly decoupled.
+- **Repository Pattern**: Data access via interfaces (`SessionRepository`,
+  `KnowledgeRepository`, `SchemaRepository`). In-memory implementations for tests,
+  Firestore implementations for production. Repositories are injected, never imported directly.
 
 ## Code Conventions
 - All code and comments in English
@@ -46,12 +49,15 @@ Monorepo with four packages:
 - `npm run build` – Build all packages
 - `npm run lint` – ESLint across all packages
 - `npm run typecheck` – TypeScript type checking
-- `npm run test` – Run tests (Vitest)
+- `npm run test` – Run unit tests (Vitest, excludes integration tests)
+- `npm run test:integration` – Run Firestore integration tests (requires emulator)
+- `npm run emulator:start` – Start Firestore emulator on localhost:8080
 - `npm run format` – Prettier formatting
 
 ## Testing
 - Vitest as test runner
 - Test files: `*.test.ts` co-located next to source files
+- Integration tests: `*.integration.test.ts` (require Firestore emulator, excluded from `npm test`)
 - Aim for unit tests on all agent logic and schema validation
 - Use descriptive test names: `it('should classify audio input as history category')`
 

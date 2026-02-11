@@ -3,7 +3,10 @@ import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
 import type { PersonaConfig } from '@mycel/schemas/src/persona.schema.js';
 import type { LlmClient } from '../llm/llm-client.js';
 import { createSessionManager } from './session-manager.js';
-import { createInMemorySessionStore } from './in-memory-session-store.js';
+import { createInMemorySessionRepository } from '../repositories/in-memory-session.repository.js';
+import { createInMemoryKnowledgeRepository } from '../repositories/in-memory-knowledge.repository.js';
+import type { SessionRepository } from '../repositories/session.repository.js';
+import type { KnowledgeRepository } from '../repositories/knowledge.repository.js';
 
 const domainConfig: DomainConfig = {
   name: 'test-domain',
@@ -162,16 +165,19 @@ function createMockLlm(): { client: LlmClient; callArgs: Array<{ systemPrompt: s
 
 function createTestManager(): {
   manager: ReturnType<typeof createSessionManager>;
-  store: ReturnType<typeof createInMemorySessionStore>;
+  sessionRepo: SessionRepository;
+  knowledgeRepo: KnowledgeRepository;
   callArgs: Array<{ systemPrompt: string }>;
 } {
-  const store = createInMemorySessionStore();
+  const sessionRepo = createInMemorySessionRepository();
+  const knowledgeRepo = createInMemoryKnowledgeRepository();
   const { client, callArgs } = createMockLlm();
   const manager = createSessionManager({
     pipelineConfig: { domainConfig, personaConfig, llmClient: client },
-    sessionStore: store,
+    sessionRepository: sessionRepo,
+    knowledgeRepository: knowledgeRepo,
   });
-  return { manager, store, callArgs };
+  return { manager, sessionRepo, knowledgeRepo, callArgs };
 }
 
 describe('SessionManager', () => {
@@ -262,8 +268,8 @@ describe('SessionManager', () => {
     expect(classifierCallsAfter).toBe(classifierCallsBefore);
   });
 
-  it('should accumulate askedQuestions across turns', async () => {
-    const { manager, store } = createTestManager();
+  it('should accumulate turns across the session', async () => {
+    const { manager, sessionRepo } = createTestManager();
 
     const turn1 = await manager.startSession({
       content: 'The old church was built in 1732.',
@@ -275,11 +281,11 @@ describe('SessionManager', () => {
       isFollowUpResponse: true,
     });
 
-    const session = await store.load(turn1.sessionId);
-    expect(session).toBeDefined();
+    const session = await sessionRepo.getSessionWithTurns(turn1.sessionId);
+    expect(session).not.toBeNull();
     expect(session?.turns).toHaveLength(2);
 
-    // Turn 1 should have questions, turn 2 should reference them
+    // Turn 1 should have questions
     const turn1Questions = session?.turns[0].pipelineResult.personaOutput?.result.followUpQuestions ?? [];
     expect(turn1Questions.length).toBeGreaterThan(0);
   });
@@ -369,5 +375,20 @@ describe('SessionManager', () => {
     });
 
     expect(Object.keys(turn2.entry?.structuredData ?? {}).length).toBeGreaterThan(0);
+  });
+
+  it('should persist knowledge entries when knowledgeRepository is provided', async () => {
+    const { manager, knowledgeRepo } = createTestManager();
+
+    const turn1 = await manager.startSession({
+      content: 'The old church was built in 1732.',
+      isFollowUpResponse: false,
+    });
+
+    const entries = await knowledgeRepo.getBySession(turn1.sessionId);
+    expect(entries.length).toBeGreaterThan(0);
+    expect(entries[0].categoryId).toBe('history');
+    expect(entries[0].sessionId).toBe(turn1.sessionId);
+    expect(entries[0].status).toBe('draft');
   });
 });

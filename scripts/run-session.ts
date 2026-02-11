@@ -3,8 +3,35 @@ import { createInterface } from 'node:readline';
 import { loadConfig } from '@mycel/schemas/src/config-loader.js';
 import { createLlmClient } from '@mycel/core/src/llm/llm-client.js';
 import { createSessionManager } from '@mycel/core/src/session/session-manager.js';
-import { createInMemorySessionStore } from '@mycel/core/src/session/in-memory-session-store.js';
+import { createInMemorySessionRepository } from '@mycel/core/src/repositories/in-memory-session.repository.js';
+import { createInMemoryKnowledgeRepository } from '@mycel/core/src/repositories/in-memory-knowledge.repository.js';
+import { createFirestoreClient } from '@mycel/core/src/infrastructure/firestore-client.js';
+import { createFirestoreSessionRepository } from '@mycel/core/src/infrastructure/firestore-session.repository.js';
+import { createFirestoreKnowledgeRepository } from '@mycel/core/src/infrastructure/firestore-knowledge.repository.js';
+import type { SessionRepository } from '@mycel/core/src/repositories/session.repository.js';
+import type { KnowledgeRepository } from '@mycel/core/src/repositories/knowledge.repository.js';
 import type { SessionResponse } from '@mycel/shared/src/types/session.types.js';
+
+function createRepositories(): {
+  sessionRepository: SessionRepository;
+  knowledgeRepository: KnowledgeRepository;
+  persistenceMode: string;
+} {
+  if (process.env['FIRESTORE_EMULATOR_HOST']) {
+    const db = createFirestoreClient();
+    return {
+      sessionRepository: createFirestoreSessionRepository(db),
+      knowledgeRepository: createFirestoreKnowledgeRepository(db),
+      persistenceMode: `Firestore (emulator: ${process.env['FIRESTORE_EMULATOR_HOST']})`,
+    };
+  }
+
+  return {
+    sessionRepository: createInMemorySessionRepository(),
+    knowledgeRepository: createInMemoryKnowledgeRepository(),
+    persistenceMode: 'In-memory (no persistence)',
+  };
+}
 
 function renderProgressBar(score: number, width: number = 30): string {
   const filled = Math.round(score * width);
@@ -53,9 +80,12 @@ function renderFinalEntry(response: SessionResponse): void {
 async function main(): Promise<void> {
   const configDir = process.argv[2] ?? resolve(process.cwd(), 'config');
 
+  const { sessionRepository, knowledgeRepository, persistenceMode } = createRepositories();
+
   console.log('=== Mycel Interactive Session ===\n');
   console.log(`Config directory: ${configDir}`);
   console.log(`Mock LLM: ${process.env['MYCEL_MOCK_LLM'] === 'true' ? 'yes' : 'no'}`);
+  console.log(`Persistence: ${persistenceMode}`);
   console.log('Type "done" or press Ctrl+C to end the session.\n');
 
   const config = await loadConfig(configDir);
@@ -67,7 +97,8 @@ async function main(): Promise<void> {
       personaConfig: config.persona,
       llmClient,
     },
-    sessionStore: createInMemorySessionStore(),
+    sessionRepository,
+    knowledgeRepository,
   });
 
   const rl = createInterface({

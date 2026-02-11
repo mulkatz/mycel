@@ -1,3 +1,5 @@
+export type KnowledgeEntryStatus = 'draft' | 'confirmed' | 'migrated';
+
 export interface KnowledgeEntry {
   readonly id: string;
   readonly categoryId: string;
@@ -11,6 +13,17 @@ export interface KnowledgeEntry {
   readonly followUp?: KnowledgeFollowUp;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+
+  // Persistence fields (ADR-004: Adaptive Schema Evolution)
+  readonly sessionId?: string;
+  readonly turnId?: string;
+  readonly confidence?: number;
+  readonly suggestedCategoryLabel?: string;
+  readonly topicKeywords?: readonly string[];
+  readonly rawInput?: string;
+  readonly status?: KnowledgeEntryStatus;
+  readonly migratedFrom?: string;
+  readonly migratedAt?: Date;
 }
 
 export interface KnowledgeFollowUp {

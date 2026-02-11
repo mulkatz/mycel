@@ -57,3 +57,10 @@ export class SessionError extends MycelError {
     this.name = 'SessionError';
   }
 }
+
+export class PersistenceError extends MycelError {
+  constructor(message: string, cause?: Error) {
+    super(message, 'PERSISTENCE_ERROR', cause);
+    this.name = 'PersistenceError';
+  }
+}

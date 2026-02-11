@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type {
   Session,
   SessionResponse,
@@ -8,7 +7,8 @@ import type {
 } from '@mycel/shared/src/types/session.types.js';
 import type { PipelineState } from '@mycel/shared/src/types/agent.types.js';
 import type { Pipeline, PipelineConfig } from '../orchestration/pipeline.js';
-import type { SessionStore } from './session-store.js';
+import type { SessionRepository } from '../repositories/session.repository.js';
+import type { KnowledgeRepository, CreateKnowledgeEntryInput } from '../repositories/knowledge.repository.js';
 import { createPipeline } from '../orchestration/pipeline.js';
 import { calculateCompleteness } from './completeness.js';
 import { SessionError } from '@mycel/shared/src/utils/errors.js';
@@ -18,7 +18,8 @@ const log = createChildLogger('session:manager');
 
 export interface SessionManagerConfig {
   readonly pipelineConfig: PipelineConfig;
-  readonly sessionStore: SessionStore;
+  readonly sessionRepository: SessionRepository;
+  readonly knowledgeRepository?: KnowledgeRepository;
 }
 
 export interface SessionManager {
@@ -49,7 +50,7 @@ function collectAllQuestions(session: Session): readonly string[] {
 }
 
 function buildSessionResponse(
-  session: Session,
+  sessionId: string,
   result: PipelineState,
   completenessScore: number,
   turnNumber: number,
@@ -61,7 +62,7 @@ function buildSessionResponse(
   const followUpQuestions = result.personaOutput?.result.followUpQuestions ?? [];
 
   return {
-    sessionId: session.id,
+    sessionId,
     entry,
     personaResponse,
     followUpQuestions,
@@ -71,20 +72,63 @@ function buildSessionResponse(
   };
 }
 
+async function persistKnowledgeEntry(
+  knowledgeRepo: KnowledgeRepository | undefined,
+  result: PipelineState,
+  sessionId: string,
+  turnId: string,
+  rawInput: string,
+): Promise<void> {
+  if (!knowledgeRepo) {
+    return;
+  }
+
+  const entry = result.structuringOutput?.result.entry;
+  if (!entry) {
+    return;
+  }
+
+  const classifierResult = result.classifierOutput?.result;
+  const input: CreateKnowledgeEntryInput = {
+    sessionId,
+    turnId,
+    categoryId: entry.categoryId,
+    subcategoryId: entry.subcategoryId,
+    confidence: classifierResult?.confidence ?? 0,
+    suggestedCategoryLabel: classifierResult?.suggestedCategoryLabel ?? entry.categoryId,
+    topicKeywords: [...entry.tags],
+    rawInput,
+    title: entry.title,
+    content: entry.content,
+    source: entry.source,
+    structuredData: entry.structuredData,
+    tags: [...entry.tags],
+    metadata: entry.metadata,
+    followUp: entry.followUp,
+  };
+
+  await knowledgeRepo.create(input);
+}
+
 export function createSessionManager(config: SessionManagerConfig): SessionManager {
   const pipeline: Pipeline = createPipeline(config.pipelineConfig);
-  const store = config.sessionStore;
+  const sessionRepo = config.sessionRepository;
+  const knowledgeRepo = config.knowledgeRepository;
   const domainConfig = config.pipelineConfig.domainConfig;
   const threshold = domainConfig.completeness?.autoCompleteThreshold ?? 0.8;
   const maxTurns = domainConfig.completeness?.maxTurns ?? 5;
 
   return {
     async startSession(input: TurnInput): Promise<SessionResponse> {
-      const sessionId = randomUUID();
-      log.info({ sessionId }, 'Starting new session');
+      const session = await sessionRepo.create({
+        domainConfigName: domainConfig.name,
+        personaConfigName: config.pipelineConfig.personaConfig.name,
+      });
+
+      log.info({ sessionId: session.id }, 'Starting new session');
 
       const agentInput = {
-        sessionId,
+        sessionId: session.id,
         content: input.content,
         metadata: { source: 'session' },
       };
@@ -92,39 +136,32 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
       const result = await pipeline.run(agentInput);
       const entry = result.structuringOutput?.result.entry;
       const completenessScore = entry ? calculateCompleteness(entry, domainConfig) : 0;
+      const status = completenessScore >= threshold ? 'complete' as const : 'active' as const;
 
-      const now = new Date();
-      const session: Session = {
-        id: sessionId,
-        domainConfigName: domainConfig.name,
-        personaConfigName: config.pipelineConfig.personaConfig.name,
-        status: completenessScore >= threshold ? 'complete' : 'active',
-        turns: [
-          {
-            turnNumber: 1,
-            input,
-            pipelineResult: result,
-            timestamp: now,
-          },
-        ],
+      const turn = await sessionRepo.addTurn(session.id, {
+        turnNumber: 1,
+        input,
+        pipelineResult: result,
+      });
+
+      await sessionRepo.update(session.id, {
+        status,
         currentEntry: entry,
         classifierResult: result.classifierOutput,
-        createdAt: now,
-        updatedAt: now,
-      };
+      });
 
-      await store.save(session);
+      await persistKnowledgeEntry(knowledgeRepo, result, session.id, turn.id ?? '', input.content);
 
       log.info(
-        { sessionId, completenessScore, turnNumber: 1 },
+        { sessionId: session.id, completenessScore, turnNumber: 1 },
         'Session started',
       );
 
-      return buildSessionResponse(session, result, completenessScore, 1, threshold);
+      return buildSessionResponse(session.id, result, completenessScore, 1, threshold);
     },
 
     async continueSession(sessionId: string, input: TurnInput): Promise<SessionResponse> {
-      const session = await store.load(sessionId);
+      const session = await sessionRepo.getSessionWithTurns(sessionId);
       if (!session) {
         throw new SessionError(`Session not found: ${sessionId}`);
       }
@@ -170,54 +207,47 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
       const completenessScore = entry ? calculateCompleteness(entry, domainConfig) : 0;
       const isAutoComplete = completenessScore >= threshold;
 
-      const now = new Date();
-      const updatedSession: Session = {
-        ...session,
-        status: isAutoComplete ? 'complete' : 'active',
-        turns: [
-          ...session.turns,
-          {
-            turnNumber,
-            input,
-            pipelineResult: result,
-            timestamp: now,
-          },
-        ],
-        currentEntry: entry ?? session.currentEntry,
-        updatedAt: now,
-      };
+      const turn = await sessionRepo.addTurn(sessionId, {
+        turnNumber,
+        input,
+        pipelineResult: result,
+      });
 
-      await store.save(updatedSession);
+      await sessionRepo.update(sessionId, {
+        status: isAutoComplete ? 'complete' : 'active',
+        currentEntry: entry ?? session.currentEntry,
+      });
+
+      await persistKnowledgeEntry(knowledgeRepo, result, sessionId, turn.id ?? '', input.content);
 
       log.info(
         { sessionId, completenessScore, turnNumber, isAutoComplete },
         'Session continued',
       );
 
-      return buildSessionResponse(updatedSession, result, completenessScore, turnNumber, threshold);
+      return buildSessionResponse(sessionId, result, completenessScore, turnNumber, threshold);
     },
 
     async endSession(sessionId: string): Promise<Session> {
-      const session = await store.load(sessionId);
+      const session = await sessionRepo.getSessionWithTurns(sessionId);
       if (!session) {
         throw new SessionError(`Session not found: ${sessionId}`);
       }
 
       const finalStatus = session.currentEntry ? 'complete' : 'abandoned';
-      const updatedSession: Session = {
-        ...session,
-        status: finalStatus,
-        updatedAt: new Date(),
-      };
+      await sessionRepo.update(sessionId, { status: finalStatus });
 
-      await store.save(updatedSession);
       log.info({ sessionId, status: finalStatus }, 'Session ended');
 
-      return updatedSession;
+      const updated = await sessionRepo.getSessionWithTurns(sessionId);
+      if (!updated) {
+        throw new SessionError(`Session not found after update: ${sessionId}`);
+      }
+      return updated;
     },
 
     async getSession(sessionId: string): Promise<Session> {
-      const session = await store.load(sessionId);
+      const session = await sessionRepo.getSessionWithTurns(sessionId);
       if (!session) {
         throw new SessionError(`Session not found: ${sessionId}`);
       }

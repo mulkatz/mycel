@@ -3,6 +3,11 @@ import type { ClassifierOutput, PipelineState } from './agent.types.js';
 
 export type SessionStatus = 'active' | 'complete' | 'abandoned';
 
+export interface SessionMetadata {
+  readonly source?: 'cli' | 'api' | 'web';
+  readonly userId?: string;
+}
+
 export interface TurnInput {
   readonly content: string;
   readonly isFollowUpResponse: boolean;
@@ -10,6 +15,7 @@ export interface TurnInput {
 }
 
 export interface Turn {
+  readonly id?: string;
   readonly turnNumber: number;
   readonly input: TurnInput;
   readonly pipelineResult: PipelineState;
@@ -26,6 +32,7 @@ export interface Session {
   readonly classifierResult?: ClassifierOutput;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+  readonly metadata?: SessionMetadata;
 }
 
 export interface SessionResponse {
