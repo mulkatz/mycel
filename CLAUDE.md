@@ -99,3 +99,10 @@ Do NOT update CLAUDE.md for:
 - Implementation details of individual features
 - Bug fixes
 - Refactors that don't change the public API or conventions
+
+## Task Workflow
+Before starting any backlog item from ROADMAP.md:
+1. Read the current codebase and CLAUDE.md
+2. Write a detailed implementation plan as a markdown file in docs/plans/
+3. Present the plan and ask for approval before coding
+4. After completion: update CLAUDE.md only if needed, mark task as done in ROADMAP.md
