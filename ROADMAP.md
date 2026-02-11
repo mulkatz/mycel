@@ -18,6 +18,7 @@ Before starting any task from the backlog:
 - [x] Real LLM validation (Vertex AI / Gemini integration, prompt tuning, error handling)
 - [x] Adaptive Schema Evolution (ADR-004: `_uncategorized` fallback, exploratory gap-reasoning, suggestedCategoryLabel/topicKeywords)
 - [x] Persistence layer (Firestore Native Mode, Repository Pattern, emulator integration tests)
+- [x] Terraform deployment (dev environment on GCP: Firestore, Cloud Run, IAM, Artifact Registry)
 
 ## In Progress
 
@@ -26,6 +27,5 @@ Before starting any task from the backlog:
 - [ ] RAG foundation (embedding generation, Vertex AI Vector Search, Context Dispatcher implementation)
 - [ ] Audio ingestion (Speech-to-Text via Vertex AI → pipeline)
 - [ ] Image ingestion (Vision API → pipeline)
-- [ ] Terraform deployment (dev environment on GCP)
 - [ ] Authentication and multi-tenancy
 - [ ] Monitoring and observability

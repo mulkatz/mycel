@@ -68,7 +68,7 @@ Monorepo with four packages:
 - Keep commits atomic and focused
 
 ## Infrastructure
-- Terraform in `infrastructure/` with environment separation (dev/prod)
+- Terraform in `infra/terraform/` with environment separation (dev only for now)
 - Remote state in GCS bucket
 - All GCP resources defined as reusable Terraform modules
 - Use `terraform.tfvars.example` as templates, never commit actual `.tfvars`
