@@ -15,11 +15,12 @@ Before starting any task from the backlog:
 - [x] Project initialization (monorepo, TypeScript, Terraform structure)
 - [x] Vertical slice: Text → Agent Pipeline → Structured Output
 - [x] Multi-turn conversation loop (Session Manager, state accumulation, interactive CLI)
+- [x] Real LLM validation (Vertex AI / Gemini integration, prompt tuning, error handling)
+- [x] Adaptive Schema Evolution (ADR-004: `_uncategorized` fallback, exploratory gap-reasoning, suggestedCategoryLabel/topicKeywords)
 
 ## In Progress
 
 ## Backlog (ordered by priority)
-- [ ] Real LLM validation (Vertex AI / Gemini integration, prompt tuning, error handling)
 - [ ] Persistence layer (SessionStore + KnowledgeEntry storage via Cloud Storage or Firestore)
 - [ ] API layer (Cloud Run HTTP entrypoint, request/response contracts)
 - [ ] RAG foundation (embedding generation, Vertex AI Vector Search, Context Dispatcher implementation)
