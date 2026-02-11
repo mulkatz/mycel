@@ -31,6 +31,22 @@ export function createPersonaNode(
         ? followUpQuestions.map((q) => `- ${q}`).join('\n')
         : 'No follow-up questions needed.';
 
+    let followUpContext = '';
+    if (state.turnContext?.isFollowUp) {
+      const previousQuestions = state.turnContext.askedQuestions;
+      if (previousQuestions.length > 0) {
+        followUpContext = `
+[FOLLOW_UP_CONTEXT]
+This is follow-up turn ${String(state.turnContext.turnNumber)}. The user is responding to previous questions.
+
+Previously asked questions (DO NOT repeat these):
+${previousQuestions.map((q) => `- ${q}`).join('\n')}
+
+Acknowledge the new information and only ask about remaining gaps.
+`;
+      }
+    }
+
     const systemPrompt = `${personaConfig.systemPromptTemplate}
 
 Your persona:
@@ -45,7 +61,7 @@ ${gapSummary}
 
 Suggested follow-up questions:
 ${questionSummary}
-
+${followUpContext}
 Generate a persona-appropriate response that:
 1. Acknowledges what the user shared
 2. Asks follow-up questions to fill gaps (max ${String(personaConfig.promptBehavior.maxFollowUpQuestions)} questions)

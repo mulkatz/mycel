@@ -47,6 +47,7 @@ function createMockState(): PipelineGraphState {
     },
     personaOutput: undefined,
     structuringOutput: undefined,
+    turnContext: undefined,
   };
 }
 

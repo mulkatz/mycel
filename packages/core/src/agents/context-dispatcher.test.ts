@@ -15,6 +15,7 @@ function createMockState(): PipelineGraphState {
     gapReasoningOutput: undefined,
     personaOutput: undefined,
     structuringOutput: undefined,
+    turnContext: undefined,
   };
 }
 

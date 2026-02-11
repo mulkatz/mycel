@@ -21,8 +21,15 @@ export interface LlmClient {
   invoke(request: LlmRequest): Promise<LlmResponse>;
 }
 
+function parseMockTurnNumber(prompt: string): number {
+  const match = /follow-up turn\s+(\d+)/i.exec(prompt);
+  return match ? parseInt(match[1], 10) : 1;
+}
+
 function createMockResponse(systemPrompt: string): string {
   const prompt = systemPrompt.toLowerCase();
+  const isFollowUp = prompt.includes('[follow_up_context]');
+  const turnNumber = parseMockTurnNumber(systemPrompt);
 
   if (prompt.includes('classifier') || prompt.includes('classification')) {
     return JSON.stringify({
@@ -34,6 +41,28 @@ function createMockResponse(systemPrompt: string): string {
   }
 
   if (prompt.includes('gap-reasoning') || prompt.includes('gap analysis')) {
+    if (isFollowUp && turnNumber >= 3) {
+      return JSON.stringify({
+        gaps: [],
+        followUpQuestions: [],
+        reasoning: 'All required fields have been filled.',
+      });
+    }
+    if (isFollowUp) {
+      return JSON.stringify({
+        gaps: [
+          {
+            field: 'sources',
+            description: 'No sources or references provided',
+            priority: 'medium',
+          },
+        ],
+        followUpQuestions: [
+          'Do you have any sources or references for this information?',
+        ],
+        reasoning: 'Period has been provided. Only sources remain missing.',
+      });
+    }
     return JSON.stringify({
       gaps: [
         { field: 'period', description: 'The exact time period is unclear', priority: 'high' },
@@ -52,6 +81,20 @@ function createMockResponse(systemPrompt: string): string {
   }
 
   if (prompt.includes('persona')) {
+    if (isFollowUp && turnNumber >= 3) {
+      return JSON.stringify({
+        response: 'Wonderful, thank you! I now have all the information I need.',
+        followUpQuestions: [],
+      });
+    }
+    if (isFollowUp) {
+      return JSON.stringify({
+        response: 'Thank you for the details! Just one more thing I would like to know.',
+        followUpQuestions: [
+          'Do you have any written sources or references for this?',
+        ],
+      });
+    }
     return JSON.stringify({
       response:
         'Thank you for sharing this knowledge! I have a few questions to fill in some gaps.',
@@ -63,6 +106,26 @@ function createMockResponse(systemPrompt: string): string {
   }
 
   if (prompt.includes('structuring') || prompt.includes('structured')) {
+    if (isFollowUp && turnNumber >= 3) {
+      return JSON.stringify({
+        title: 'Historical Knowledge Entry',
+        content: 'A historical account shared by a community member, with full details.',
+        structuredData: { period: '18th century', sources: 'Church records' },
+        tags: ['history', 'community', 'architecture'],
+        isComplete: true,
+        missingFields: [],
+      });
+    }
+    if (isFollowUp) {
+      return JSON.stringify({
+        title: 'Historical Knowledge Entry',
+        content: 'A historical account shared by a community member, with period details.',
+        structuredData: { period: '18th century' },
+        tags: ['history', 'community'],
+        isComplete: false,
+        missingFields: ['sources'],
+      });
+    }
     return JSON.stringify({
       title: 'Historical Knowledge Entry',
       content: 'A historical account shared by a community member.',

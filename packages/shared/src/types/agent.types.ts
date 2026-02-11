@@ -1,4 +1,5 @@
 import type { KnowledgeEntry, KnowledgeSearchResult } from './knowledge.types.js';
+import type { TurnContext } from './session.types.js';
 
 export type AgentRole =
   | 'classifier'
@@ -76,4 +77,5 @@ export interface PipelineState {
   readonly gapReasoningOutput?: GapReasoningOutput;
   readonly personaOutput?: PersonaOutput;
   readonly structuringOutput?: StructuringOutput;
+  readonly turnContext?: TurnContext;
 }

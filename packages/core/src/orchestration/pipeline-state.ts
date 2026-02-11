@@ -7,6 +7,7 @@ import type {
   PersonaOutput,
   StructuringOutput,
 } from '@mycel/shared/src/types/agent.types.js';
+import type { TurnContext } from '@mycel/shared/src/types/session.types.js';
 
 export const PipelineGraphAnnotation = Annotation.Root({
   sessionId: Annotation<string>,
@@ -16,6 +17,7 @@ export const PipelineGraphAnnotation = Annotation.Root({
   gapReasoningOutput: Annotation<GapReasoningOutput | undefined>,
   personaOutput: Annotation<PersonaOutput | undefined>,
   structuringOutput: Annotation<StructuringOutput | undefined>,
+  turnContext: Annotation<TurnContext | undefined>,
 });
 
 export type PipelineGraphState = typeof PipelineGraphAnnotation.State;

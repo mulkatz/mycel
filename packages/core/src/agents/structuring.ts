@@ -34,13 +34,30 @@ export function createStructuringNode(
       ? `Identified gaps: ${state.gapReasoningOutput.result.gaps.map((g) => g.field).join(', ')}`
       : 'No gap analysis available.';
 
+    let followUpContext = '';
+    if (state.turnContext?.isFollowUp && state.turnContext.previousEntry) {
+      const existing = state.turnContext.previousEntry;
+      followUpContext = `
+[FOLLOW_UP_CONTEXT]
+This is follow-up turn ${String(state.turnContext.turnNumber)}. Merge new information into the existing entry.
+
+Existing entry:
+- Title: ${existing.title}
+- Content: ${existing.content}
+- Structured data: ${JSON.stringify(existing.structuredData)}
+- Tags: ${existing.tags.join(', ')}
+
+Merge the new information: update structuredData with newly provided fields, append to content, and update tags. Keep the existing title unless the new information warrants a better one.
+`;
+    }
+
     const systemPrompt = `You are a structuring agent. Extract structured knowledge from the user's input for the "${category.label}" category.
 
 Required fields: ${requiredFields.length > 0 ? requiredFields.join(', ') : 'none'}
 Optional fields: ${optionalFields.length > 0 ? optionalFields.join(', ') : 'none'}
 
 ${gapInfo}
-
+${followUpContext}
 Create a structured knowledge entry with:
 - title: a concise title for this knowledge entry
 - content: the full content, cleaned up and well-structured
@@ -66,12 +83,13 @@ Respond with a JSON object.`;
 
     const result = parsed.data;
     const now = new Date();
+    const previousEntry = state.turnContext?.previousEntry;
 
     const gaps = state.gapReasoningOutput?.result.gaps ?? [];
     const followUpQuestions = state.gapReasoningOutput?.result.followUpQuestions ?? [];
 
     const entry: KnowledgeEntry = {
-      id: randomUUID(),
+      id: previousEntry?.id ?? randomUUID(),
       categoryId,
       subcategoryId: state.classifierOutput?.result.subcategoryId,
       title: result.title,
@@ -93,7 +111,7 @@ Respond with a JSON object.`;
               suggestedQuestions: followUpQuestions,
             }
           : undefined,
-      createdAt: now,
+      createdAt: previousEntry?.createdAt ?? now,
       updatedAt: now,
     };
 

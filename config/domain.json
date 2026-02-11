@@ -26,5 +26,9 @@
     "allowedModalities": ["audio", "image", "text"],
     "primaryLanguage": "de",
     "supportedLanguages": ["de", "en"]
+  },
+  "completeness": {
+    "autoCompleteThreshold": 0.8,
+    "maxTurns": 5
   }
 }

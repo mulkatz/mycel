@@ -18,6 +18,14 @@ export function createClassifierNode(
   return async (state: PipelineGraphState): Promise<Partial<PipelineGraphState>> => {
     log.info({ sessionId: state.sessionId }, 'Classifying input');
 
+    if (state.turnContext?.isFollowUp && state.classifierOutput) {
+      log.info(
+        { sessionId: state.sessionId },
+        'Follow-up turn: reusing existing classification',
+      );
+      return {};
+    }
+
     if (categories.length === 0) {
       throw new AgentError('No categories configured in domain schema');
     }

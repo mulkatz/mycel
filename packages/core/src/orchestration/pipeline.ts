@@ -1,5 +1,10 @@
 import { StateGraph, START, END } from '@langchain/langgraph';
-import type { AgentInput, PipelineState } from '@mycel/shared/src/types/agent.types.js';
+import type {
+  AgentInput,
+  ClassifierOutput,
+  PipelineState,
+} from '@mycel/shared/src/types/agent.types.js';
+import type { TurnContext } from '@mycel/shared/src/types/session.types.js';
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
 import type { PersonaConfig } from '@mycel/schemas/src/persona.schema.js';
 import type { LlmClient } from '../llm/llm-client.js';
@@ -19,8 +24,13 @@ export interface PipelineConfig {
   readonly llmClient: LlmClient;
 }
 
+export interface PipelineRunOptions {
+  readonly turnContext?: TurnContext;
+  readonly classifierOutput?: ClassifierOutput;
+}
+
 export interface Pipeline {
-  run(input: AgentInput): Promise<PipelineState>;
+  run(input: AgentInput, options?: PipelineRunOptions): Promise<PipelineState>;
 }
 
 export function createPipeline(config: PipelineConfig): Pipeline {
@@ -50,17 +60,21 @@ export function createPipeline(config: PipelineConfig): Pipeline {
     .compile();
 
   return {
-    async run(input: AgentInput): Promise<PipelineState> {
-      log.info({ sessionId: input.sessionId }, 'Running agent pipeline');
+    async run(input: AgentInput, options?: PipelineRunOptions): Promise<PipelineState> {
+      log.info(
+        { sessionId: input.sessionId, isFollowUp: options?.turnContext?.isFollowUp },
+        'Running agent pipeline',
+      );
 
       const result = await graph.invoke({
         sessionId: input.sessionId,
         input,
-        classifierOutput: undefined,
+        classifierOutput: options?.classifierOutput,
         contextDispatcherOutput: undefined,
         gapReasoningOutput: undefined,
         personaOutput: undefined,
         structuringOutput: undefined,
+        turnContext: options?.turnContext,
       });
 
       log.info({ sessionId: input.sessionId }, 'Pipeline complete');
@@ -73,6 +87,7 @@ export function createPipeline(config: PipelineConfig): Pipeline {
         gapReasoningOutput: result.gapReasoningOutput,
         personaOutput: result.personaOutput,
         structuringOutput: result.structuringOutput,
+        turnContext: result.turnContext,
       };
     },
   };

@@ -1,0 +1,146 @@
+import { resolve } from 'node:path';
+import { createInterface } from 'node:readline';
+import { loadConfig } from '@mycel/schemas/src/config-loader.js';
+import { createLlmClient } from '@mycel/core/src/llm/llm-client.js';
+import { createSessionManager } from '@mycel/core/src/session/session-manager.js';
+import { createInMemorySessionStore } from '@mycel/core/src/session/in-memory-session-store.js';
+import type { SessionResponse } from '@mycel/shared/src/types/session.types.js';
+
+function renderProgressBar(score: number, width: number = 30): string {
+  const filled = Math.round(score * width);
+  const empty = width - filled;
+  const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(empty);
+  const pct = Math.round(score * 100);
+  return `[${bar}] ${String(pct)}%`;
+}
+
+function renderResponse(response: SessionResponse): void {
+  console.log(`\n--- Turn ${String(response.turnNumber)} ---`);
+  console.log(`Completeness: ${renderProgressBar(response.completenessScore)}`);
+  console.log(`\nPersona: ${response.personaResponse}`);
+
+  if (response.followUpQuestions.length > 0) {
+    console.log('\nFollow-up questions:');
+    for (let i = 0; i < response.followUpQuestions.length; i++) {
+      console.log(`  ${String(i + 1)}. ${response.followUpQuestions[i]}`);
+    }
+  }
+
+  if (response.isComplete) {
+    console.log('\n=== Knowledge entry is COMPLETE ===');
+  }
+}
+
+function renderFinalEntry(response: SessionResponse): void {
+  if (!response.entry) {
+    console.log('\nNo knowledge entry was created.');
+    return;
+  }
+
+  const entry = response.entry;
+  console.log('\n=== Final Knowledge Entry ===');
+  console.log(`  ID: ${entry.id}`);
+  console.log(`  Title: ${entry.title}`);
+  console.log(`  Category: ${entry.categoryId}`);
+  console.log(`  Content: ${entry.content}`);
+  console.log(`  Tags: ${entry.tags.join(', ')}`);
+  console.log(`  Structured data: ${JSON.stringify(entry.structuredData, null, 2)}`);
+  if (entry.followUp) {
+    console.log(`  Remaining gaps: ${entry.followUp.gaps.join('; ')}`);
+  }
+}
+
+async function main(): Promise<void> {
+  const configDir = process.argv[2] ?? resolve(process.cwd(), 'config');
+
+  console.log('=== Mycel Interactive Session ===\n');
+  console.log(`Config directory: ${configDir}`);
+  console.log(`Mock LLM: ${process.env['MYCEL_MOCK_LLM'] === 'true' ? 'yes' : 'no'}`);
+  console.log('Type "done" or press Ctrl+C to end the session.\n');
+
+  const config = await loadConfig(configDir);
+  const llmClient = await createLlmClient();
+
+  const sessionManager = createSessionManager({
+    pipelineConfig: {
+      domainConfig: config.domain,
+      personaConfig: config.persona,
+      llmClient,
+    },
+    sessionStore: createInMemorySessionStore(),
+  });
+
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const prompt = (question: string): Promise<string> =>
+    new Promise((resolve) => {
+      rl.question(question, resolve);
+    });
+
+  let sessionId: string | undefined;
+  let lastResponse: SessionResponse | undefined;
+
+  try {
+    const firstInput = await prompt('You: ');
+    if (firstInput.trim().toLowerCase() === 'done' || firstInput.trim() === '') {
+      console.log('Session ended.');
+      rl.close();
+      return;
+    }
+
+    const response = await sessionManager.startSession({
+      content: firstInput,
+      isFollowUpResponse: false,
+    });
+
+    sessionId = response.sessionId;
+    lastResponse = response;
+    renderResponse(response);
+
+    while (!response.isComplete) {
+      const input = await prompt('\nYou: ');
+      if (input.trim().toLowerCase() === 'done') {
+        break;
+      }
+
+      const followUp = await sessionManager.continueSession(sessionId, {
+        content: input,
+        isFollowUpResponse: true,
+        respondingToQuestions: lastResponse?.followUpQuestions,
+      });
+
+      lastResponse = followUp;
+      renderResponse(followUp);
+
+      if (followUp.isComplete) {
+        break;
+      }
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ERR_USE_AFTER_CLOSE') {
+      // readline closed by Ctrl+C
+    } else {
+      throw error;
+    }
+  }
+
+  if (sessionId) {
+    const session = await sessionManager.endSession(sessionId);
+    console.log(`\nSession status: ${session.status}`);
+    console.log(`Total turns: ${String(session.turns.length)}`);
+    if (lastResponse) {
+      renderFinalEntry(lastResponse);
+    }
+  }
+
+  rl.close();
+  console.log('\n=== Session complete ===');
+}
+
+main().catch((error: unknown) => {
+  console.error('Session failed:', error);
+  process.exit(1);
+});

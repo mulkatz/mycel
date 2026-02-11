@@ -14,6 +14,11 @@ const IngestionConfigSchema = z.object({
   supportedLanguages: z.array(z.string().min(2).max(5)).min(1),
 });
 
+const CompletenessConfigSchema = z.object({
+  autoCompleteThreshold: z.number().min(0).max(1).default(0.8),
+  maxTurns: z.number().int().min(1).default(5),
+});
+
 export const DomainSchema = z.object({
   $schema: z.string().optional(),
   name: z.string().min(1),
@@ -21,8 +26,10 @@ export const DomainSchema = z.object({
   description: z.string(),
   categories: z.array(CategorySchema).min(1),
   ingestion: IngestionConfigSchema,
+  completeness: CompletenessConfigSchema.optional(),
 });
 
 export type DomainConfig = z.infer<typeof DomainSchema>;
 export type Category = z.infer<typeof CategorySchema>;
 export type IngestionConfig = z.infer<typeof IngestionConfigSchema>;
+export type CompletenessConfig = z.infer<typeof CompletenessConfigSchema>;

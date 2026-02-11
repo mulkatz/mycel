@@ -18,7 +18,8 @@
     "format": "prettier --write 'packages/*/src/**/*.ts'",
     "format:check": "prettier --check 'packages/*/src/**/*.ts'",
     "clean": "npm run clean --workspaces && rm -f *.tsbuildinfo",
-    "pipeline": "MYCEL_MOCK_LLM=true npx tsx scripts/run-pipeline.ts"
+    "pipeline": "MYCEL_MOCK_LLM=true npx tsx scripts/run-pipeline.ts",
+    "session": "MYCEL_MOCK_LLM=true npx tsx scripts/run-session.ts"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",

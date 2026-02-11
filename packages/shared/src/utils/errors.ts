@@ -39,3 +39,10 @@ export class ConfigurationError extends MycelError {
     this.name = 'ConfigurationError';
   }
 }
+
+export class SessionError extends MycelError {
+  constructor(message: string, cause?: Error) {
+    super(message, 'SESSION_ERROR', cause);
+    this.name = 'SessionError';
+  }
+}

@@ -31,13 +31,38 @@ export function createGapReasoningNode(
     const contextSummary =
       state.contextDispatcherOutput?.result.contextSummary ?? 'No context available.';
 
+    let followUpContext = '';
+    if (state.turnContext?.isFollowUp) {
+      const prevTurns = state.turnContext.previousTurns
+        .map(
+          (t) =>
+            `Turn ${String(t.turnNumber)}: User said: "${t.userInput}" | Gaps: ${t.gaps.join(', ') || 'none'} | Filled: ${t.filledFields.join(', ') || 'none'}`,
+        )
+        .join('\n');
+
+      const existingData = state.turnContext.previousEntry?.structuredData;
+      const dataStr = existingData ? JSON.stringify(existingData) : 'none';
+
+      followUpContext = `
+[FOLLOW_UP_CONTEXT]
+This is follow-up turn ${String(state.turnContext.turnNumber)}. The user is providing additional information.
+
+Previous turns:
+${prevTurns}
+
+Existing structured data: ${dataStr}
+
+Focus ONLY on remaining gaps that have not been filled yet.
+`;
+    }
+
     const systemPrompt = `You are a gap-reasoning and gap analysis agent. Analyze the user's input for a knowledge entry in the "${category.label}" category.
 
 Required fields for this category: ${requiredFields.length > 0 ? requiredFields.join(', ') : 'none'}
 Optional fields for this category: ${optionalFields.length > 0 ? optionalFields.join(', ') : 'none'}
 
 Existing context: ${contextSummary}
-
+${followUpContext}
 Identify what information is missing or incomplete. For each gap, specify the field name, a description of what is missing, and a priority (high for required fields, medium/low for optional).
 
 Also generate follow-up questions that would help fill the identified gaps.
