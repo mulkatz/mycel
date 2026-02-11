@@ -77,3 +77,25 @@ Monorepo with four packages:
 - Cross-package imports use workspace protocol: `"@mycel/shared": "*"`
 - External dependencies should be added to the specific package that needs them
 - Keep the dependency tree minimal – avoid adding packages for trivial functionality
+
+## Documentation Rules
+- CLAUDE.md is the single source of truth for AI context
+- Only document what would cause incorrect decisions if missing
+- CLAUDE.md updates must be minimal diffs, not rewrites
+- ADRs only for decisions where the "why" is non-obvious
+- No package-level READMEs
+- No inline comments explaining obvious code
+- JSDoc only on public interfaces with non-obvious contracts
+- When in doubt, don't document – the code should speak for itself
+
+## CLAUDE.md Update Triggers
+Update CLAUDE.md ONLY when:
+- A new package is added or removed
+- A new external dependency is introduced that affects architecture
+- A convention changes (e.g. new testing pattern, new error handling approach)
+- A non-obvious constraint exists that the code alone doesn't communicate
+
+Do NOT update CLAUDE.md for:
+- Implementation details of individual features
+- Bug fixes
+- Refactors that don't change the public API or conventions
