@@ -27,6 +27,7 @@ export interface Session {
   readonly domainConfigName: string;
   readonly personaConfigName: string;
   readonly status: SessionStatus;
+  readonly turnCount: number;
   readonly turns: readonly Turn[];
   readonly currentEntry?: KnowledgeEntry;
   readonly classifierResult?: ClassifierOutput;

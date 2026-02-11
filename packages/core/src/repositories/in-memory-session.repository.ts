@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Session, Turn } from '@mycel/shared/src/types/session.types.js';
+import { PersistenceError } from '@mycel/shared/src/utils/errors.js';
 import type {
   CreateSessionInput,
   CreateTurnInput,
@@ -19,6 +20,7 @@ export function createInMemorySessionRepository(): SessionRepository {
         domainConfigName: input.domainConfigName,
         personaConfigName: input.personaConfigName,
         status: 'active',
+        turnCount: 0,
         turns: [],
         createdAt: now,
         updatedAt: now,
@@ -36,7 +38,7 @@ export function createInMemorySessionRepository(): SessionRepository {
     update(id: string, updates: UpdateSessionInput): Promise<void> {
       const session = sessions.get(id);
       if (!session) {
-        return Promise.resolve();
+        return Promise.reject(new PersistenceError(`Session not found: ${id}`));
       }
       const updated: Session = {
         ...session,
@@ -67,6 +69,7 @@ export function createInMemorySessionRepository(): SessionRepository {
       if (session) {
         sessions.set(sessionId, {
           ...session,
+          turnCount: session.turnCount + 1,
           turns: [...session.turns, turn],
           updatedAt: new Date(),
         });

@@ -70,16 +70,20 @@ describe('createInMemoryKnowledgeRepository', () => {
     expect(results).toHaveLength(2);
   });
 
-  it('should query uncategorized entries', async () => {
+  it('should query uncategorized entries with draft status only', async () => {
     const repo = createInMemoryKnowledgeRepository();
-    await repo.create(createTestEntryInput({ categoryId: '_uncategorized' }));
+    const entry1 = await repo.create(createTestEntryInput({ categoryId: '_uncategorized' }));
     await repo.create(createTestEntryInput({ categoryId: 'history' }));
     await repo.create(createTestEntryInput({ categoryId: '_uncategorized' }));
 
+    // Migrate one entry — it should no longer appear in uncategorized
+    await repo.update(entry1.id, { status: 'migrated', categoryId: 'history', migratedFrom: '_uncategorized' });
+
     const results = await repo.getUncategorized();
-    expect(results).toHaveLength(2);
+    expect(results).toHaveLength(1);
     for (const entry of results) {
       expect(entry.categoryId).toBe('_uncategorized');
+      expect(entry.status).toBe('draft');
     }
   });
 
@@ -117,5 +121,12 @@ describe('createInMemoryKnowledgeRepository', () => {
     expect(updated?.migratedFrom).toBe('_uncategorized');
     expect(updated?.migratedAt).toBeInstanceOf(Date);
     expect(updated?.updatedAt.getTime()).toBeGreaterThanOrEqual(entry.updatedAt.getTime());
+  });
+
+  it('should throw when updating a nonexistent entry', async () => {
+    const repo = createInMemoryKnowledgeRepository();
+    await expect(
+      repo.update('nonexistent', { status: 'confirmed' }),
+    ).rejects.toThrow('Knowledge entry not found');
   });
 });

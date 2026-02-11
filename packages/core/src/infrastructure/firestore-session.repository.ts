@@ -1,5 +1,5 @@
 import type { Firestore } from '@google-cloud/firestore';
-import { Timestamp } from '@google-cloud/firestore';
+import { FieldValue, Timestamp } from '@google-cloud/firestore';
 import type { Session, Turn, SessionStatus, SessionMetadata } from '@mycel/shared/src/types/session.types.js';
 import type { ClassifierOutput, PipelineState } from '@mycel/shared/src/types/agent.types.js';
 import type { KnowledgeEntry } from '@mycel/shared/src/types/knowledge.types.js';
@@ -18,6 +18,7 @@ interface SessionDocument {
   domainConfigName: string;
   personaConfigName: string;
   status: SessionStatus;
+  turnCount: number;
   currentEntry?: Record<string, unknown>;
   classifierResult?: Record<string, unknown>;
   metadata?: SessionMetadata;
@@ -38,6 +39,7 @@ function sessionFromDoc(id: string, data: SessionDocument, turns: readonly Turn[
     domainConfigName: data.domainConfigName,
     personaConfigName: data.personaConfigName,
     status: data.status,
+    turnCount: data.turnCount,
     turns,
     currentEntry: data.currentEntry as KnowledgeEntry | undefined,
     classifierResult: data.classifierResult as ClassifierOutput | undefined,
@@ -67,6 +69,7 @@ export function createFirestoreSessionRepository(db: Firestore): SessionReposito
         domainConfigName: input.domainConfigName,
         personaConfigName: input.personaConfigName,
         status: 'active',
+        turnCount: 0,
         metadata: input.metadata,
         createdAt: now,
         updatedAt: now,
@@ -126,7 +129,10 @@ export function createFirestoreSessionRepository(db: Firestore): SessionReposito
         .doc();
 
       await turnRef.set(turnData);
-      await sessionsRef.doc(sessionId).update({ updatedAt: Timestamp.now() });
+      await sessionsRef.doc(sessionId).update({
+        turnCount: FieldValue.increment(1),
+        updatedAt: Timestamp.now(),
+      });
 
       return turnFromDoc(turnRef.id, turnData);
     },

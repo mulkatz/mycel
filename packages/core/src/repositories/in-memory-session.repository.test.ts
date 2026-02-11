@@ -35,6 +35,7 @@ describe('createInMemorySessionRepository', () => {
     expect(session.domainConfigName).toBe('test-domain');
     expect(session.personaConfigName).toBe('test-persona');
     expect(session.status).toBe('active');
+    expect(session.turnCount).toBe(0);
     expect(session.turns).toEqual([]);
     expect(session.createdAt).toBeInstanceOf(Date);
     expect(session.updatedAt).toBeInstanceOf(Date);
@@ -66,7 +67,7 @@ describe('createInMemorySessionRepository', () => {
     expect(loaded?.updatedAt.getTime()).toBeGreaterThanOrEqual(session.updatedAt.getTime());
   });
 
-  it('should add a turn to a session', async () => {
+  it('should add a turn to a session and increment turnCount', async () => {
     const repo = createInMemorySessionRepository();
     const session = await repo.create(testSessionInput);
 
@@ -77,6 +78,9 @@ describe('createInMemorySessionRepository', () => {
     expect(turn.turnNumber).toBe(1);
     expect(turn.input.content).toBe('Turn 1 input');
     expect(turn.timestamp).toBeInstanceOf(Date);
+
+    const loaded = await repo.getById(session.id);
+    expect(loaded?.turnCount).toBe(1);
   });
 
   it('should retrieve all turns for a session', async () => {
@@ -123,6 +127,13 @@ describe('createInMemorySessionRepository', () => {
     const repo = createInMemorySessionRepository();
     await expect(
       repo.addTurn('nonexistent', createTestTurnInput(1)),
+    ).rejects.toThrow('Session not found');
+  });
+
+  it('should throw when updating a nonexistent session', async () => {
+    const repo = createInMemorySessionRepository();
+    await expect(
+      repo.update('nonexistent', { status: 'complete' }),
     ).rejects.toThrow('Session not found');
   });
 });

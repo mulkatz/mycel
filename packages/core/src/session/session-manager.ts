@@ -1,5 +1,6 @@
 import type {
   Session,
+  SessionMetadata,
   SessionResponse,
   TurnContext,
   TurnInput,
@@ -23,7 +24,7 @@ export interface SessionManagerConfig {
 }
 
 export interface SessionManager {
-  startSession(input: TurnInput): Promise<SessionResponse>;
+  startSession(input: TurnInput, metadata?: SessionMetadata): Promise<SessionResponse>;
   continueSession(sessionId: string, input: TurnInput): Promise<SessionResponse>;
   endSession(sessionId: string): Promise<Session>;
   getSession(sessionId: string): Promise<Session>;
@@ -119,10 +120,11 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
   const maxTurns = domainConfig.completeness?.maxTurns ?? 5;
 
   return {
-    async startSession(input: TurnInput): Promise<SessionResponse> {
+    async startSession(input: TurnInput, metadata?: SessionMetadata): Promise<SessionResponse> {
       const session = await sessionRepo.create({
         domainConfigName: domainConfig.name,
         personaConfigName: config.pipelineConfig.personaConfig.name,
+        metadata,
       });
 
       log.info({ sessionId: session.id }, 'Starting new session');

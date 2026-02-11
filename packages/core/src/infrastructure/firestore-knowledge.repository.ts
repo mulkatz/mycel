@@ -125,6 +125,7 @@ export function createFirestoreKnowledgeRepository(db: Firestore): KnowledgeRepo
     async getUncategorized(): Promise<readonly KnowledgeEntry[]> {
       const snapshot = await collectionRef
         .where('categoryId', '==', '_uncategorized')
+        .where('status', '==', 'draft')
         .orderBy('createdAt', 'desc')
         .get();
 

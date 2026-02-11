@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { KnowledgeEntry } from '@mycel/shared/src/types/knowledge.types.js';
+import { PersistenceError } from '@mycel/shared/src/utils/errors.js';
 import type {
   CreateKnowledgeEntryInput,
   KnowledgeRepository,
@@ -51,7 +52,9 @@ export function createInMemoryKnowledgeRepository(): KnowledgeRepository {
 
     getUncategorized(): Promise<readonly KnowledgeEntry[]> {
       return Promise.resolve(
-        [...entries.values()].filter((e) => e.categoryId === '_uncategorized'),
+        [...entries.values()].filter(
+          (e) => e.categoryId === '_uncategorized' && e.status === 'draft',
+        ),
       );
     },
 
@@ -66,7 +69,7 @@ export function createInMemoryKnowledgeRepository(): KnowledgeRepository {
     update(id: string, updates: UpdateKnowledgeEntryInput): Promise<void> {
       const entry = entries.get(id);
       if (!entry) {
-        return Promise.resolve();
+        return Promise.reject(new PersistenceError(`Knowledge entry not found: ${id}`));
       }
       const updated: KnowledgeEntry = {
         ...entry,

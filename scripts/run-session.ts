@@ -122,10 +122,13 @@ async function main(): Promise<void> {
       return;
     }
 
-    const response = await sessionManager.startSession({
-      content: firstInput,
-      isFollowUpResponse: false,
-    });
+    const response = await sessionManager.startSession(
+      {
+        content: firstInput,
+        isFollowUpResponse: false,
+      },
+      { source: 'cli' },
+    );
 
     sessionId = response.sessionId;
     lastResponse = response;
