@@ -1,36 +1,86 @@
-import type {
-  AgentInput,
-  AgentOutput,
-  GapReasoningOutput,
-} from '@mycel/shared/src/types/agent.types.js';
+import type { PersonaOutput } from '@mycel/shared/src/types/agent.types.js';
 import type { PersonaConfig } from '@mycel/schemas/src/persona.schema.js';
+import type { PipelineGraphState } from '../orchestration/pipeline-state.js';
+import type { LlmClient } from '../llm/llm-client.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { AgentError } from '@mycel/shared/src/utils/errors.js';
+import { PersonaResultSchema, PersonaResultJsonSchema } from './agent-output.schemas.js';
 
 const log = createChildLogger('agent:persona');
 
-export interface PersonaOutput extends AgentOutput {
-  readonly agentRole: 'persona';
-  readonly result: {
-    readonly response: string;
-    readonly followUpQuestions: readonly string[];
-  };
-}
+export function createPersonaNode(
+  personaConfig: PersonaConfig,
+  llmClient: LlmClient,
+): (state: PipelineGraphState) => Promise<Partial<PipelineGraphState>> {
+  return async (state: PipelineGraphState): Promise<Partial<PipelineGraphState>> => {
+    log.info(
+      { sessionId: state.sessionId, persona: personaConfig.name },
+      'Generating persona response',
+    );
 
-export interface PersonaAgent {
-  respond(input: AgentInput, gaps: GapReasoningOutput): Promise<PersonaOutput>;
-}
+    const gaps = state.gapReasoningOutput?.result.gaps ?? [];
+    const followUpQuestions = state.gapReasoningOutput?.result.followUpQuestions ?? [];
 
-export function createPersonaAgent(personaConfig: PersonaConfig): PersonaAgent {
-  return {
-    respond(input: AgentInput, _gaps: GapReasoningOutput): Promise<PersonaOutput> {
-      log.info(
-        { sessionId: input.sessionId, persona: personaConfig.name },
-        'Generating persona response',
+    const gapSummary =
+      gaps.length > 0
+        ? gaps.map((g) => `- ${g.field} (${g.priority}): ${g.description}`).join('\n')
+        : 'No gaps identified.';
+
+    const questionSummary =
+      followUpQuestions.length > 0
+        ? followUpQuestions.map((q) => `- ${q}`).join('\n')
+        : 'No follow-up questions needed.';
+
+    const systemPrompt = `${personaConfig.systemPromptTemplate}
+
+Your persona:
+- Name: ${personaConfig.name}
+- Tonality: ${personaConfig.tonality}
+- Formality: ${personaConfig.formality}
+- Language: ${personaConfig.language}
+${personaConfig.addressForm ? `- Address form: ${personaConfig.addressForm}` : ''}
+
+The following gaps were identified in the user's input:
+${gapSummary}
+
+Suggested follow-up questions:
+${questionSummary}
+
+Generate a persona-appropriate response that:
+1. Acknowledges what the user shared
+2. Asks follow-up questions to fill gaps (max ${String(personaConfig.promptBehavior.maxFollowUpQuestions)} questions)
+${personaConfig.promptBehavior.encourageStorytelling ? '3. Encourages the user to share more stories and details' : ''}
+
+Respond with a JSON object containing:
+- response: your persona response text
+- followUpQuestions: array of follow-up questions`;
+
+    const response = await llmClient.invoke({
+      systemPrompt,
+      userMessage: state.input.content,
+      jsonSchema: PersonaResultJsonSchema as Record<string, unknown>,
+    });
+
+    const parsed = PersonaResultSchema.safeParse(JSON.parse(response.content));
+    if (!parsed.success) {
+      throw new AgentError(
+        `Persona returned invalid output: ${parsed.error.errors.map((e) => e.message).join(', ')}`,
       );
+    }
 
-      // TODO: Integrate with Vertex AI using persona system prompt
-      throw new AgentError('Persona agent not yet implemented');
-    },
+    const result = parsed.data;
+
+    const personaOutput: PersonaOutput = {
+      agentRole: 'persona',
+      result: {
+        response: result.response,
+        followUpQuestions: result.followUpQuestions,
+      },
+      confidence: 1.0,
+    };
+
+    log.info({ sessionId: state.sessionId }, 'Persona response generated');
+
+    return { personaOutput };
   };
 }

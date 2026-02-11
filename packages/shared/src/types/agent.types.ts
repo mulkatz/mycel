@@ -1,3 +1,5 @@
+import type { KnowledgeEntry, KnowledgeSearchResult } from './knowledge.types.js';
+
 export type AgentRole =
   | 'classifier'
   | 'context-dispatcher'
@@ -27,6 +29,14 @@ export interface ClassifierOutput extends AgentOutput {
   };
 }
 
+export interface ContextDispatcherOutput extends AgentOutput {
+  readonly agentRole: 'context-dispatcher';
+  readonly result: {
+    readonly relevantContext: readonly KnowledgeSearchResult[];
+    readonly contextSummary: string;
+  };
+}
+
 export interface GapReasoningOutput extends AgentOutput {
   readonly agentRole: 'gap-reasoning';
   readonly result: {
@@ -41,11 +51,29 @@ export interface KnowledgeGap {
   readonly priority: 'high' | 'medium' | 'low';
 }
 
+export interface PersonaOutput extends AgentOutput {
+  readonly agentRole: 'persona';
+  readonly result: {
+    readonly response: string;
+    readonly followUpQuestions: readonly string[];
+  };
+}
+
+export interface StructuringOutput extends AgentOutput {
+  readonly agentRole: 'structuring';
+  readonly result: {
+    readonly entry: KnowledgeEntry;
+    readonly isComplete: boolean;
+    readonly missingFields: readonly string[];
+  };
+}
+
 export interface PipelineState {
   readonly sessionId: string;
   readonly input: AgentInput;
   readonly classifierOutput?: ClassifierOutput;
+  readonly contextDispatcherOutput?: ContextDispatcherOutput;
   readonly gapReasoningOutput?: GapReasoningOutput;
-  readonly personaResponse?: string;
-  readonly structuredOutput?: Record<string, unknown>;
+  readonly personaOutput?: PersonaOutput;
+  readonly structuringOutput?: StructuringOutput;
 }

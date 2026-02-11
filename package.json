@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "format": "prettier --write 'packages/*/src/**/*.ts'",
     "format:check": "prettier --check 'packages/*/src/**/*.ts'",
-    "clean": "npm run clean --workspaces && rm -f *.tsbuildinfo"
+    "clean": "npm run clean --workspaces && rm -f *.tsbuildinfo",
+    "pipeline": "MYCEL_MOCK_LLM=true npx tsx scripts/run-pipeline.ts"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",
@@ -25,6 +26,7 @@
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.2.0",
+    "tsx": "^4.7.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   },

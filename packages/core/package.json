@@ -10,9 +10,14 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/google-vertexai": "^0.2.0",
+    "@langchain/langgraph": "^0.2.0",
     "@mycel/shared": "*",
     "@mycel/schemas": "*",
-    "@mycel/ingestion": "*"
+    "@mycel/ingestion": "*",
+    "zod": "^3.23.0",
+    "zod-to-json-schema": "^3.23.0"
   },
   "devDependencies": {
     "typescript": "^5.4.0"
