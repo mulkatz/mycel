@@ -9,7 +9,7 @@ export interface CreateKnowledgeEntryInput {
   readonly sessionId: string;
   readonly turnId: string;
   readonly categoryId: string;
-  readonly subcategoryId?: string;
+  readonly subcategoryId?: string | null;
   readonly confidence: number;
   readonly suggestedCategoryLabel: string;
   readonly topicKeywords: readonly string[];

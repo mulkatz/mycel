@@ -3,7 +3,7 @@ export type KnowledgeEntryStatus = 'draft' | 'confirmed' | 'migrated';
 export interface KnowledgeEntry {
   readonly id: string;
   readonly categoryId: string;
-  readonly subcategoryId?: string;
+  readonly subcategoryId?: string | null;
   readonly title: string;
   readonly content: string;
   readonly source: KnowledgeSource;

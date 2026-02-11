@@ -14,7 +14,7 @@ interface KnowledgeEntryDocument {
   sessionId: string;
   turnId: string;
   categoryId: string;
-  subcategoryId?: string;
+  subcategoryId?: string | null;
   confidence: number;
   suggestedCategoryLabel: string;
   topicKeywords: string[];

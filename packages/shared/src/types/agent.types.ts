@@ -25,7 +25,7 @@ export interface ClassifierOutput extends AgentOutput {
   readonly agentRole: 'classifier';
   readonly result: {
     readonly categoryId: string;
-    readonly subcategoryId?: string;
+    readonly subcategoryId?: string | null;
     readonly confidence: number;
     readonly summary?: string;
     readonly suggestedCategoryLabel?: string;

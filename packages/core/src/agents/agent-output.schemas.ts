@@ -3,7 +3,7 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export const ClassifierResultSchema = z.object({
   categoryId: z.string(),
-  subcategoryId: z.string().optional(),
+  subcategoryId: z.string().nullable().optional(),
   confidence: z.number().min(0).max(1),
   reasoning: z.string().optional(),
   summary: z.string().optional(),
