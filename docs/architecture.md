@@ -10,8 +10,13 @@ graph TB
         A3[Text] --> ING
     end
 
+    subgraph Session Layer
+        ING --> SM[Session Manager]
+        SM -->|multi-turn| SM
+    end
+
     subgraph Agent Pipeline
-        ING --> CLS[Classifier Agent]
+        SM --> CLS[Classifier Agent]
         CLS --> CTX[Context Dispatcher]
         CTX --> GAP[Gap-Reasoning Agent]
         GAP --> PER[Persona Agent]
@@ -19,7 +24,7 @@ graph TB
     end
 
     subgraph Knowledge Layer
-        STR --> KB[(Knowledge Base)]
+        STR --> KB[(Firestore)]
         KB --> VS[Vector Search]
         VS -->|RAG| CTX
     end
@@ -48,25 +53,115 @@ A deployment is fully configured by providing a Domain Schema and a Persona Sche
 
 Instead of a single monolithic prompt, Mycel uses specialized agents:
 
-| Agent               | Responsibility                                          |
-| ------------------- | ------------------------------------------------------- |
-| Classifier          | Categorizes input into domain categories                |
-| Context Dispatcher  | Retrieves relevant existing knowledge (RAG)             |
-| Gap-Reasoning       | Identifies missing information and generates questions  |
-| Persona             | Formulates the response in the configured persona style |
-| Structuring         | Extracts structured data from the conversation          |
+| Agent              | Responsibility                                                  | LLM Model     |
+| ------------------ | --------------------------------------------------------------- | -------------- |
+| Classifier         | Categorizes input into domain categories or `_uncategorized`    | Gemini Flash   |
+| Context Dispatcher | Retrieves relevant existing knowledge (RAG)                     | –              |
+| Gap-Reasoning      | Identifies missing information and generates follow-up questions| Gemini Pro     |
+| Persona            | Formulates the response in the configured persona style         | Gemini Flash   |
+| Structuring        | Extracts structured data from the conversation                  | Gemini Pro     |
+
+All agents produce Zod-validated JSON output. Prompts are tuned to handle malformed responses (markdown-wrapped JSON, retries on parse failure).
+
+### Session Management
+
+The Session Manager orchestrates multi-turn conversations:
+
+- Each session references a Domain Schema and Persona Schema
+- Conversation state accumulates across turns (previous turns inform gap analysis)
+- Sessions have a lifecycle: `active` → `completed` | `abandoned`
+- Completeness is evaluated after each turn based on configurable thresholds (`autoCompleteThreshold`, `maxTurns`)
+
+Individual turns are stored as a subcollection, keeping session documents lightweight while supporting unbounded conversation length.
+
+### Adaptive Schema Evolution (ADR-004)
+
+The system does not force knowledge into rigid categories. Key principles:
+
+- **`_uncategorized` is valid**: If input doesn't fit any category with sufficient confidence, the Classifier assigns `_uncategorized` rather than forcing a bad fit.
+- **Every entry carries metadata for future clustering**: `suggestedCategoryLabel`, `topicKeywords[]`, and `rawInput` are preserved even for well-classified entries.
+- **Migration-ready lifecycle**: Entries have a `status` field (`draft` → `confirmed` → `migrated`) to support future re-classification of `_uncategorized` entries into proper categories.
+- **Adaptive questioning**: The Gap-Reasoning agent asks only what the user is likely to know, not a rigid list of missing fields.
+
+The system learns its own schema over time rather than relying on predefined categories alone.
 
 ### Ingestion Pipeline
 
 The ingestion layer normalizes multimodal input into text:
 
-- **Audio**: Speech-to-Text via GCP Speech API
-- **Image**: Vision API for OCR and object detection
+- **Audio**: Speech-to-Text via Vertex AI (not yet implemented)
+- **Image**: Vision API for OCR and object detection (not yet implemented)
 - **Text**: Direct processing with language detection
 
-### RAG (Retrieval Augmented Generation)
+## Persistence Layer
 
-The Context Dispatcher uses Vertex AI Vector Search to retrieve relevant existing knowledge before the Gap-Reasoning agent analyzes what is missing. This prevents duplicate knowledge and enables the system to build on existing entries.
+### Repository Pattern
+
+All data access goes through interfaces with injectable implementations:
+
+| Interface             | Production           | Testing               |
+| --------------------- | -------------------- | --------------------- |
+| `SessionRepository`   | Firestore            | In-Memory             |
+| `KnowledgeRepository` | Firestore            | In-Memory             |
+| `SchemaRepository`    | Firestore            | In-Memory             |
+
+Repositories are injected into the Session Manager via dependency injection. No code imports Firestore directly outside the repository implementations.
+
+### Firestore Collections
+
+```mermaid
+erDiagram
+    sessions ||--o{ turns : contains
+    sessions {
+        string id PK
+        string domainSchemaId FK
+        string personaSchemaId FK
+        string status
+        number turnCount
+        timestamp createdAt
+        timestamp updatedAt
+    }
+    turns {
+        string id PK
+        number index
+        string userInput
+        map agentResponses
+        timestamp createdAt
+    }
+    knowledgeEntries {
+        string id PK
+        string sessionId FK
+        string turnId FK
+        string category
+        number confidence
+        string suggestedCategoryLabel
+        array topicKeywords
+        string rawInput
+        map extractedFields
+        string status
+        timestamp createdAt
+    }
+    domainSchemas {
+        string id PK
+        string name
+        number version
+        map config
+        boolean isActive
+    }
+    personaSchemas {
+        string id PK
+        string name
+        number version
+        map config
+        boolean isActive
+    }
+```
+
+**Key design decisions:**
+- `turns` is a subcollection of `sessions` (scales better than an embedded array)
+- `knowledgeEntries` is a top-level collection (must be queryable across sessions)
+- `topicKeywords` is an array field for `array-contains` queries (future clustering)
+- Composite indexes on `knowledgeEntries`: `category` + `createdAt`, `status` + `createdAt`
 
 ## Package Dependencies
 
@@ -84,8 +179,28 @@ graph LR
 ```mermaid
 graph TB
     CR[Cloud Run<br/>API + Orchestration] --> VAI[Vertex AI<br/>Gemini LLM]
+    CR --> FS[(Firestore<br/>Sessions + Knowledge)]
     CR --> VS[Vector Search<br/>RAG Index]
     CR --> GCS[Cloud Storage<br/>Ingestion Bucket]
     CR --> STT[Speech-to-Text]
     CR --> VIS[Vision API]
 ```
+
+All infrastructure is provisioned via Terraform (`infra/terraform/`), with per-environment configurations and shared modules. Dev environment uses Firestore Emulator for local development.
+
+## Current State
+
+| Component               | Status       |
+| ----------------------- | ------------ |
+| Agent Pipeline           | ✅ Complete  |
+| Multi-Turn Sessions      | ✅ Complete  |
+| Real LLM (Vertex AI)    | ✅ Complete  |
+| Adaptive Schema (ADR-004)| ✅ Complete  |
+| Persistence (Firestore)  | ✅ Complete  |
+| Terraform (Dev)          | ✅ Complete  |
+| API Layer (Cloud Run)    | ⬚ Planned   |
+| RAG Foundation           | ⬚ Planned   |
+| Audio Ingestion          | ⬚ Planned   |
+| Image Ingestion          | ⬚ Planned   |
+| Auth & Multi-Tenancy     | ⬚ Planned   |
+| Monitoring               | ⬚ Planned   |
