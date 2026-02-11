@@ -5,6 +5,7 @@ import type { LlmClient } from '../llm/llm-client.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { AgentError } from '@mycel/shared/src/utils/errors.js';
 import { GapReasoningResultSchema, GapReasoningResultJsonSchema } from './agent-output.schemas.js';
+import { invokeAndValidate } from '../llm/invoke-and-validate.js';
 
 const log = createChildLogger('agent:gap-reasoning');
 
@@ -70,22 +71,21 @@ Also generate follow-up questions that would help fill the identified gaps.
 Respond with a JSON object containing:
 - gaps: array of { field, description, priority }
 - followUpQuestions: array of strings
-- reasoning: brief explanation of your analysis`;
+- reasoning: brief explanation of your analysis
 
-    const response = await llmClient.invoke({
-      systemPrompt,
-      userMessage: state.input.content,
-      jsonSchema: GapReasoningResultJsonSchema as Record<string, unknown>,
+Example response:
+{"gaps": [{"field": "period", "description": "The exact time period is unclear", "priority": "high"}], "followUpQuestions": ["Can you specify the exact time period?"], "reasoning": "The user mentioned a historical event but did not specify when it occurred."}`;
+
+    const result = await invokeAndValidate({
+      llmClient,
+      request: {
+        systemPrompt,
+        userMessage: state.input.content,
+        jsonSchema: GapReasoningResultJsonSchema as Record<string, unknown>,
+      },
+      schema: GapReasoningResultSchema,
+      agentName: 'Gap reasoning',
     });
-
-    const parsed = GapReasoningResultSchema.safeParse(JSON.parse(response.content));
-    if (!parsed.success) {
-      throw new AgentError(
-        `Gap reasoning returned invalid output: ${parsed.error.errors.map((e) => e.message).join(', ')}`,
-      );
-    }
-
-    const result = parsed.data;
 
     const gapReasoningOutput: GapReasoningOutput = {
       agentRole: 'gap-reasoning',

@@ -5,6 +5,7 @@ import type { LlmClient } from '../llm/llm-client.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { AgentError } from '@mycel/shared/src/utils/errors.js';
 import { ClassifierResultSchema, ClassifierResultJsonSchema } from './agent-output.schemas.js';
+import { invokeAndValidate } from '../llm/invoke-and-validate.js';
 
 const log = createChildLogger('agent:classifier');
 
@@ -42,22 +43,21 @@ Respond with a JSON object containing:
 - categoryId: the ID of the best matching category
 - subcategoryId: optional subcategory if applicable
 - confidence: a number between 0 and 1 indicating your confidence
-- reasoning: a brief explanation of your classification`;
+- reasoning: a brief explanation of your classification
 
-    const response = await llmClient.invoke({
-      systemPrompt,
-      userMessage: state.input.content,
-      jsonSchema: ClassifierResultJsonSchema as Record<string, unknown>,
+Example response:
+{"categoryId": "history", "subcategoryId": null, "confidence": 0.92, "reasoning": "The input discusses historical events from the 18th century."}`;
+
+    const result = await invokeAndValidate({
+      llmClient,
+      request: {
+        systemPrompt,
+        userMessage: state.input.content,
+        jsonSchema: ClassifierResultJsonSchema as Record<string, unknown>,
+      },
+      schema: ClassifierResultSchema,
+      agentName: 'Classifier',
     });
-
-    const parsed = ClassifierResultSchema.safeParse(JSON.parse(response.content));
-    if (!parsed.success) {
-      throw new AgentError(
-        `Classifier returned invalid output: ${parsed.error.errors.map((e) => e.message).join(', ')}`,
-      );
-    }
-
-    const result = parsed.data;
 
     if (!categoryIds.includes(result.categoryId)) {
       throw new AgentError(

@@ -40,6 +40,17 @@ export class ConfigurationError extends MycelError {
   }
 }
 
+export class LlmError extends MycelError {
+  constructor(
+    message: string,
+    public readonly retryable: boolean,
+    cause?: Error,
+  ) {
+    super(message, 'LLM_ERROR', cause);
+    this.name = 'LlmError';
+  }
+}
+
 export class SessionError extends MycelError {
   constructor(message: string, cause?: Error) {
     super(message, 'SESSION_ERROR', cause);

@@ -1,7 +1,11 @@
 import { createChildLogger } from '@mycel/shared/src/logger.js';
-import { ConfigurationError } from '@mycel/shared/src/utils/errors.js';
+import { ConfigurationError, LlmError } from '@mycel/shared/src/utils/errors.js';
+import { extractJson } from './json-extraction.js';
 
 const log = createChildLogger('llm:client');
+
+const MAX_TRANSIENT_RETRIES = 3;
+const BASE_DELAY_MS = 1000;
 
 export interface LlmRequest {
   readonly systemPrompt: string;
@@ -156,6 +160,41 @@ function createMockClient(): LlmClient {
   };
 }
 
+function isTransientError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const errorRecord = error as unknown as Record<string, unknown>;
+  const statusCode =
+    (typeof errorRecord['status'] === 'number' ? errorRecord['status'] : undefined) ??
+    (typeof errorRecord['statusCode'] === 'number' ? errorRecord['statusCode'] : undefined);
+
+  if (typeof statusCode === 'number' && (statusCode === 429 || statusCode >= 500)) {
+    return true;
+  }
+
+  const message = error.message.toLowerCase();
+  const transientPatterns = [
+    '429', 'rate limit', 'too many requests',
+    '500', '502', '503', 'internal server error', 'bad gateway', 'service unavailable',
+    'econnreset', 'etimedout', 'timeout', 'network',
+    'socket hang up', 'econnrefused',
+  ];
+
+  return transientPatterns.some((pattern) => message.includes(pattern));
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function computeBackoffMs(attempt: number): number {
+  const exponential = BASE_DELAY_MS * Math.pow(2, attempt);
+  const jitter = Math.random() * BASE_DELAY_MS;
+  return exponential + jitter;
+}
+
 async function createVertexClient(): Promise<LlmClient> {
   const projectId = process.env['GCP_PROJECT_ID'];
   const location = process.env['VERTEX_AI_LOCATION'] ?? 'europe-west1';
@@ -173,6 +212,7 @@ async function createVertexClient(): Promise<LlmClient> {
     location,
     temperature: 0.2,
     authOptions: { projectId },
+    responseMimeType: 'application/json',
   });
 
   log.info({ projectId, location }, 'Using Vertex AI LLM client');
@@ -181,23 +221,60 @@ async function createVertexClient(): Promise<LlmClient> {
     async invoke(request: LlmRequest): Promise<LlmResponse> {
       log.debug({ systemPromptLength: request.systemPrompt.length }, 'Vertex AI LLM invocation');
 
-      const response = await model.invoke([
-        ['system', request.systemPrompt],
-        ['human', request.userMessage],
-      ]);
+      let lastError: Error | undefined;
 
-      const content =
-        typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+      for (let attempt = 0; attempt < MAX_TRANSIENT_RETRIES; attempt++) {
+        try {
+          const response = await model.invoke([
+            ['system', request.systemPrompt],
+            ['human', request.userMessage],
+          ]);
 
-      return {
-        content,
-        tokenUsage: response.usage_metadata
-          ? {
-              input: response.usage_metadata.input_tokens,
-              output: response.usage_metadata.output_tokens,
-            }
-          : undefined,
-      };
+          const rawContent =
+            typeof response.content === 'string'
+              ? response.content
+              : JSON.stringify(response.content);
+
+          // Validate that the response is parseable JSON, using extractJson as safety net
+          const parsed = extractJson(rawContent);
+          const content = JSON.stringify(parsed);
+
+          return {
+            content,
+            tokenUsage: response.usage_metadata
+              ? {
+                  input: response.usage_metadata.input_tokens,
+                  output: response.usage_metadata.output_tokens,
+                }
+              : undefined,
+          };
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+
+          if (!isTransientError(error)) {
+            throw new LlmError(
+              `Vertex AI invocation failed: ${lastError.message}`,
+              false,
+              lastError,
+            );
+          }
+
+          log.warn(
+            { attempt: attempt + 1, maxRetries: MAX_TRANSIENT_RETRIES, error: lastError.message },
+            'Transient LLM error, retrying',
+          );
+
+          if (attempt < MAX_TRANSIENT_RETRIES - 1) {
+            await sleep(computeBackoffMs(attempt));
+          }
+        }
+      }
+
+      throw new LlmError(
+        `Vertex AI invocation failed after ${String(MAX_TRANSIENT_RETRIES)} retries: ${lastError?.message ?? 'unknown error'}`,
+        true,
+        lastError,
+      );
     },
   };
 }

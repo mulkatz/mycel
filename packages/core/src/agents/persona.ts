@@ -3,8 +3,8 @@ import type { PersonaConfig } from '@mycel/schemas/src/persona.schema.js';
 import type { PipelineGraphState } from '../orchestration/pipeline-state.js';
 import type { LlmClient } from '../llm/llm-client.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
-import { AgentError } from '@mycel/shared/src/utils/errors.js';
 import { PersonaResultSchema, PersonaResultJsonSchema } from './agent-output.schemas.js';
+import { invokeAndValidate } from '../llm/invoke-and-validate.js';
 
 const log = createChildLogger('agent:persona');
 
@@ -69,22 +69,21 @@ ${personaConfig.promptBehavior.encourageStorytelling ? '3. Encourages the user t
 
 Respond with a JSON object containing:
 - response: your persona response text
-- followUpQuestions: array of follow-up questions`;
+- followUpQuestions: array of follow-up questions
 
-    const response = await llmClient.invoke({
-      systemPrompt,
-      userMessage: state.input.content,
-      jsonSchema: PersonaResultJsonSchema as Record<string, unknown>,
+Example response:
+{"response": "Thank you for sharing this fascinating story! I'd love to learn more details.", "followUpQuestions": ["Can you tell me more about the time period?", "Do you have any written sources about this?"]}`;
+
+    const result = await invokeAndValidate({
+      llmClient,
+      request: {
+        systemPrompt,
+        userMessage: state.input.content,
+        jsonSchema: PersonaResultJsonSchema as Record<string, unknown>,
+      },
+      schema: PersonaResultSchema,
+      agentName: 'Persona',
     });
-
-    const parsed = PersonaResultSchema.safeParse(JSON.parse(response.content));
-    if (!parsed.success) {
-      throw new AgentError(
-        `Persona returned invalid output: ${parsed.error.errors.map((e) => e.message).join(', ')}`,
-      );
-    }
-
-    const result = parsed.data;
 
     const personaOutput: PersonaOutput = {
       agentRole: 'persona',

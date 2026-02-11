@@ -7,6 +7,7 @@ import type { LlmClient } from '../llm/llm-client.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { AgentError } from '@mycel/shared/src/utils/errors.js';
 import { StructuredEntrySchema, StructuredEntryJsonSchema } from './agent-output.schemas.js';
+import { invokeAndValidate } from '../llm/invoke-and-validate.js';
 
 const log = createChildLogger('agent:structuring');
 
@@ -66,22 +67,22 @@ Create a structured knowledge entry with:
 - isComplete: whether all required fields are filled
 - missingFields: list of required fields that are still missing
 
-Respond with a JSON object.`;
+Respond with a JSON object.
 
-    const response = await llmClient.invoke({
-      systemPrompt,
-      userMessage: state.input.content,
-      jsonSchema: StructuredEntryJsonSchema as Record<string, unknown>,
+Example response:
+{"title": "Village Church History", "content": "The village church was built in the 18th century.", "structuredData": {"period": "18th century"}, "tags": ["history", "architecture"], "isComplete": false, "missingFields": ["sources"]}`;
+
+    const result = await invokeAndValidate({
+      llmClient,
+      request: {
+        systemPrompt,
+        userMessage: state.input.content,
+        jsonSchema: StructuredEntryJsonSchema as Record<string, unknown>,
+      },
+      schema: StructuredEntrySchema,
+      agentName: 'Structuring',
     });
 
-    const parsed = StructuredEntrySchema.safeParse(JSON.parse(response.content));
-    if (!parsed.success) {
-      throw new AgentError(
-        `Structuring returned invalid output: ${parsed.error.errors.map((e) => e.message).join(', ')}`,
-      );
-    }
-
-    const result = parsed.data;
     const now = new Date();
     const previousEntry = state.turnContext?.previousEntry;
 
