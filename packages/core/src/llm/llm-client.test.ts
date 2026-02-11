@@ -51,7 +51,7 @@ describe('createLlmClient', () => {
     it('should return persona response for persona prompts', async () => {
       const client = await createLlmClient();
       const response = await client.invoke({
-        systemPrompt: 'You are a persona agent.',
+        systemPrompt: 'You are a chronicler.\n\nYour persona:\n- Name: Test',
         userMessage: 'Test input',
       });
 

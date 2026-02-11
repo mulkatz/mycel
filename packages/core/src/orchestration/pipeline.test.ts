@@ -99,6 +99,78 @@ function createMockLlm(): { client: LlmClient; callCount: () => number } {
   return { client: { invoke: wrappedInvoke }, callCount: () => calls };
 }
 
+function createUncategorizedMockLlm(): { client: LlmClient; callCount: () => number } {
+  let calls = 0;
+  const invokeFn = vi
+    .fn()
+    .mockImplementation((request: { systemPrompt: string; userMessage: string }) => {
+      const prompt = request.systemPrompt.toLowerCase();
+
+      // Check specific agents before classifier because uncategorized prompts for
+      // gap-reasoning and structuring contain "Classifier summary:" which would
+      // incorrectly match the classifier branch.
+      if (prompt.includes('gap-reasoning') || prompt.includes('gap analysis')) {
+        return {
+          content: JSON.stringify({
+            gaps: [
+              { field: 'timeframe', description: 'When did this happen?', priority: 'medium' },
+            ],
+            followUpQuestions: [
+              'When did this happen?',
+              'Where exactly was this?',
+              'Is this something that happens regularly?',
+            ],
+            reasoning: 'Exploratory questions for uncategorized input.',
+          }),
+        };
+      }
+
+      if (prompt.includes('your persona')) {
+        return {
+          content: JSON.stringify({
+            response: 'What a lovely memory! I would love to hear more about it.',
+            followUpQuestions: ['When did this happen?', 'Where exactly was this?'],
+          }),
+        };
+      }
+
+      if (prompt.includes('structuring')) {
+        return {
+          content: JSON.stringify({
+            title: 'Summer Memories',
+            content: 'A personal account of childhood summers.',
+            structuredData: {
+              suggestedCategoryLabel: 'Childhood Memories',
+              topicKeywords: ['childhood', 'summer', 'village'],
+            },
+            tags: ['personal', 'memories'],
+            isComplete: false,
+            missingFields: ['timeframe', 'location'],
+          }),
+        };
+      }
+
+      if (prompt.includes('classifier')) {
+        return {
+          content: JSON.stringify({
+            categoryId: '_uncategorized',
+            confidence: 0.3,
+            reasoning: 'Does not fit existing categories.',
+            summary: 'Personal childhood memory about summers',
+            suggestedCategoryLabel: 'Childhood Memories',
+          }),
+        };
+      }
+
+      return { content: JSON.stringify({ result: 'unknown' }) };
+    });
+  const wrappedInvoke: LlmClient['invoke'] = (request) => {
+    calls++;
+    return invokeFn(request) as Promise<{ content: string }>;
+  };
+  return { client: { invoke: wrappedInvoke }, callCount: () => calls };
+}
+
 describe('createPipeline', () => {
   it('should run the full pipeline and return all agent outputs', async () => {
     const { client } = createMockLlm();
@@ -155,5 +227,42 @@ describe('createPipeline', () => {
     // 4 LLM calls: classifier, gap-reasoning, persona, structuring
     // (context-dispatcher is a stub and doesn't call LLM)
     expect(callCount()).toBe(4);
+  });
+
+  it('should run full pipeline for _uncategorized input without errors', async () => {
+    const { client } = createUncategorizedMockLlm();
+    const pipeline = createPipeline({
+      domainConfig,
+      personaConfig,
+      llmClient: client,
+    });
+
+    const input: AgentInput = {
+      sessionId: 'uncategorized-test',
+      content: 'I remember the summers here were always so beautiful as a child',
+      metadata: {},
+    };
+
+    const result = await pipeline.run(input);
+
+    expect(result.sessionId).toBe('uncategorized-test');
+
+    expect(result.classifierOutput).toBeDefined();
+    expect(result.classifierOutput?.result.categoryId).toBe('_uncategorized');
+    expect(result.classifierOutput?.result.summary).toBeTruthy();
+    expect(result.classifierOutput?.result.suggestedCategoryLabel).toBe('Childhood Memories');
+
+    expect(result.gapReasoningOutput).toBeDefined();
+    expect(result.gapReasoningOutput?.result.followUpQuestions.length).toBeGreaterThan(0);
+
+    expect(result.personaOutput).toBeDefined();
+    expect(result.personaOutput?.result.response).toBeTruthy();
+
+    expect(result.structuringOutput).toBeDefined();
+    const entry = result.structuringOutput?.result.entry;
+    expect(entry?.categoryId).toBe('_uncategorized');
+    expect(entry?.structuredData).toHaveProperty('suggestedCategoryLabel');
+    expect(entry?.structuredData).toHaveProperty('topicKeywords');
+    expect(entry?.id).toBeTruthy();
   });
 });

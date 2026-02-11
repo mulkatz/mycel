@@ -105,4 +105,49 @@ describe('createClassifierNode', () => {
     expect(invokeCall[0].systemPrompt).toContain('history');
     expect(invokeCall[0].systemPrompt).toContain('nature');
   });
+
+  it('should accept _uncategorized as a valid categoryId', async () => {
+    const mockLlm: LlmClient = {
+      invoke: vi.fn().mockResolvedValue({
+        content: JSON.stringify({
+          categoryId: '_uncategorized',
+          confidence: 0.3,
+          reasoning: 'Does not fit any existing category.',
+          summary: 'Personal childhood memory about summers',
+          suggestedCategoryLabel: 'Childhood Memories',
+        }),
+      }),
+    };
+
+    const node = createClassifierNode(domainConfig, mockLlm);
+    const result = await node(createMockState('I remember the summers here were beautiful'));
+
+    expect(result.classifierOutput).toBeDefined();
+    expect(result.classifierOutput?.result.categoryId).toBe('_uncategorized');
+    expect(result.classifierOutput?.result.confidence).toBe(0.3);
+    expect(result.classifierOutput?.result.summary).toBe(
+      'Personal childhood memory about summers',
+    );
+    expect(result.classifierOutput?.result.suggestedCategoryLabel).toBe('Childhood Memories');
+  });
+
+  it('should include _uncategorized instruction in system prompt', async () => {
+    const mockLlm: LlmClient = {
+      invoke: vi.fn().mockResolvedValue({
+        content: JSON.stringify({
+          categoryId: 'history',
+          confidence: 0.8,
+        }),
+      }),
+    };
+
+    const node = createClassifierNode(domainConfig, mockLlm);
+    await node(createMockState('test'));
+
+    const calls = (mockLlm.invoke as ReturnType<typeof vi.fn>).mock.calls as Array<
+      [{ systemPrompt: string }]
+    >;
+    expect(calls[0][0].systemPrompt).toContain('_uncategorized');
+    expect(calls[0][0].systemPrompt).toContain('suggestedCategoryLabel');
+  });
 });

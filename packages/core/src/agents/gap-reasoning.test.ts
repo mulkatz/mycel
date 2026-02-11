@@ -49,6 +49,36 @@ function createMockState(): PipelineGraphState {
   };
 }
 
+function createUncategorizedState(): PipelineGraphState {
+  return {
+    sessionId: 'test-session',
+    input: {
+      sessionId: 'test-session',
+      content: 'I remember the summers here were always so beautiful as a child',
+      metadata: {},
+    },
+    classifierOutput: {
+      agentRole: 'classifier',
+      result: {
+        categoryId: '_uncategorized',
+        confidence: 0.3,
+        summary: 'Personal childhood memory about summers',
+        suggestedCategoryLabel: 'Childhood Memories',
+      },
+      confidence: 0.3,
+    },
+    contextDispatcherOutput: {
+      agentRole: 'context-dispatcher',
+      result: { relevantContext: [], contextSummary: 'No context.' },
+      confidence: 1.0,
+    },
+    gapReasoningOutput: undefined,
+    personaOutput: undefined,
+    structuringOutput: undefined,
+    turnContext: undefined,
+  };
+}
+
 describe('createGapReasoningNode', () => {
   it('should analyze gaps and return follow-up questions', async () => {
     const mockLlm: LlmClient = {
@@ -85,7 +115,7 @@ describe('createGapReasoningNode', () => {
     await expect(node(stateWithoutClassifier)).rejects.toThrow('classifier output');
   });
 
-  it('should throw for unknown category', async () => {
+  it('should throw for unknown category that is not _uncategorized', async () => {
     const mockLlm: LlmClient = { invoke: vi.fn() };
 
     const node = createGapReasoningNode(domainConfig, mockLlm);
@@ -120,5 +150,71 @@ describe('createGapReasoningNode', () => {
     const invokeCall = calls[0];
     expect(invokeCall[0].systemPrompt).toContain('period');
     expect(invokeCall[0].systemPrompt).toContain('sources');
+  });
+
+  it('should handle _uncategorized input with exploratory questions', async () => {
+    const mockLlm: LlmClient = {
+      invoke: vi.fn().mockResolvedValue({
+        content: JSON.stringify({
+          gaps: [
+            { field: 'timeframe', description: 'When did this happen?', priority: 'medium' },
+            { field: 'location', description: 'Where was this?', priority: 'medium' },
+          ],
+          followUpQuestions: [
+            'When did this happen?',
+            'Where exactly was this?',
+            'Is this something that happens regularly here?',
+          ],
+          reasoning: 'Exploratory questions to understand the topic.',
+        }),
+      }),
+    };
+
+    const node = createGapReasoningNode(domainConfig, mockLlm);
+    const result = await node(createUncategorizedState());
+
+    expect(result.gapReasoningOutput).toBeDefined();
+    expect(result.gapReasoningOutput?.result.gaps).toHaveLength(2);
+    expect(result.gapReasoningOutput?.result.followUpQuestions).toHaveLength(3);
+  });
+
+  it('should use exploratory prompt for _uncategorized input', async () => {
+    const mockLlm: LlmClient = {
+      invoke: vi.fn().mockResolvedValue({
+        content: JSON.stringify({
+          gaps: [],
+          followUpQuestions: [],
+        }),
+      }),
+    };
+
+    const node = createGapReasoningNode(domainConfig, mockLlm);
+    await node(createUncategorizedState());
+
+    const calls = (mockLlm.invoke as ReturnType<typeof vi.fn>).mock.calls as Array<
+      [{ systemPrompt: string }]
+    >;
+    const prompt = calls[0][0].systemPrompt;
+    expect(prompt).toContain('exploratory mode');
+    expect(prompt).toContain('Childhood Memories');
+    expect(prompt).toContain('Personal childhood memory about summers');
+    expect(prompt).not.toContain('Required fields');
+  });
+
+  it('should truncate follow-up questions to max 3', async () => {
+    const mockLlm: LlmClient = {
+      invoke: vi.fn().mockResolvedValue({
+        content: JSON.stringify({
+          gaps: [],
+          followUpQuestions: ['Q1?', 'Q2?', 'Q3?', 'Q4?', 'Q5?'],
+          reasoning: 'Many questions.',
+        }),
+      }),
+    };
+
+    const node = createGapReasoningNode(domainConfig, mockLlm);
+    const result = await node(createMockState());
+
+    expect(result.gapReasoningOutput?.result.followUpQuestions).toHaveLength(3);
   });
 });

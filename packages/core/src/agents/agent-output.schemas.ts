@@ -6,6 +6,8 @@ export const ClassifierResultSchema = z.object({
   subcategoryId: z.string().optional(),
   confidence: z.number().min(0).max(1),
   reasoning: z.string().optional(),
+  summary: z.string().optional(),
+  suggestedCategoryLabel: z.string().optional(),
 });
 
 export type ClassifierResult = z.infer<typeof ClassifierResultSchema>;

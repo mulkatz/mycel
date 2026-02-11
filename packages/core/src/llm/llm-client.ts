@@ -30,20 +30,15 @@ function parseMockTurnNumber(prompt: string): number {
   return match ? parseInt(match[1], 10) : 1;
 }
 
-function createMockResponse(systemPrompt: string): string {
+function createMockResponse(systemPrompt: string, userMessage: string): string {
   const prompt = systemPrompt.toLowerCase();
   const isFollowUp = prompt.includes('[follow_up_context]');
   const turnNumber = parseMockTurnNumber(systemPrompt);
+  const isUncategorized = prompt.includes('exploratory mode') || prompt.includes('uncategorized');
 
-  if (prompt.includes('classifier') || prompt.includes('classification')) {
-    return JSON.stringify({
-      categoryId: 'history',
-      subcategoryId: undefined,
-      confidence: 0.85,
-      reasoning: 'The input references historical events and time periods.',
-    });
-  }
-
+  // Check gap-reasoning, persona, and structuring BEFORE classifier because
+  // uncategorized prompts for those agents contain "Classifier summary:" which
+  // would incorrectly match the classifier branch.
   if (prompt.includes('gap-reasoning') || prompt.includes('gap analysis')) {
     if (isFollowUp && turnNumber >= 3) {
       return JSON.stringify({
@@ -52,6 +47,30 @@ function createMockResponse(systemPrompt: string): string {
         reasoning: 'All required fields have been filled.',
       });
     }
+
+    if (isUncategorized && isFollowUp) {
+      return JSON.stringify({
+        gaps: [],
+        followUpQuestions: [],
+        reasoning: 'Uncategorized topic is now well understood after follow-up.',
+      });
+    }
+
+    if (isUncategorized) {
+      return JSON.stringify({
+        gaps: [
+          { field: 'timeframe', description: 'When did this happen?', priority: 'medium' },
+          { field: 'location', description: 'Where did this take place?', priority: 'medium' },
+        ],
+        followUpQuestions: [
+          'When did this happen?',
+          'Where exactly was this?',
+          'Is this something that happens regularly here?',
+        ],
+        reasoning: 'The input is uncategorized. Asking exploratory questions to understand the topic.',
+      });
+    }
+
     if (isFollowUp) {
       return JSON.stringify({
         gaps: [
@@ -84,7 +103,7 @@ function createMockResponse(systemPrompt: string): string {
     });
   }
 
-  if (prompt.includes('persona')) {
+  if (prompt.includes('your persona')) {
     if (isFollowUp && turnNumber >= 3) {
       return JSON.stringify({
         response: 'Wonderful, thank you! I now have all the information I need.',
@@ -120,6 +139,35 @@ function createMockResponse(systemPrompt: string): string {
         missingFields: [],
       });
     }
+
+    if (isUncategorized && isFollowUp) {
+      return JSON.stringify({
+        title: 'Personal Memory',
+        content: 'A personal account shared by a community member, with additional details.',
+        structuredData: {
+          suggestedCategoryLabel: 'Personal Memories',
+          topicKeywords: ['personal', 'memory', 'community', 'village'],
+        },
+        tags: ['personal', 'memory', 'community'],
+        isComplete: true,
+        missingFields: [],
+      });
+    }
+
+    if (isUncategorized) {
+      return JSON.stringify({
+        title: 'Personal Memory',
+        content: 'A personal account shared by a community member.',
+        structuredData: {
+          suggestedCategoryLabel: 'Personal Memories',
+          topicKeywords: ['personal', 'memory', 'community'],
+        },
+        tags: ['personal', 'memory'],
+        isComplete: false,
+        missingFields: ['timeframe', 'location'],
+      });
+    }
+
     if (isFollowUp) {
       return JSON.stringify({
         title: 'Historical Knowledge Entry',
@@ -140,6 +188,32 @@ function createMockResponse(systemPrompt: string): string {
     });
   }
 
+  if (prompt.includes('classifier') || prompt.includes('classification')) {
+    const input = userMessage.toLowerCase();
+    const looksHistorical =
+      input.includes('church') ||
+      input.includes('built') ||
+      input.includes('century') ||
+      input.includes('historical');
+
+    if (looksHistorical) {
+      return JSON.stringify({
+        categoryId: 'history',
+        subcategoryId: undefined,
+        confidence: 0.85,
+        reasoning: 'The input references historical events and time periods.',
+      });
+    }
+
+    return JSON.stringify({
+      categoryId: '_uncategorized',
+      confidence: 0.3,
+      reasoning: 'The input does not clearly fit any existing category.',
+      summary: 'A personal account or observation shared by a community member.',
+      suggestedCategoryLabel: 'Personal Memories',
+    });
+  }
+
   return JSON.stringify({ result: 'Mock LLM response' });
 }
 
@@ -150,7 +224,7 @@ function createMockClient(): LlmClient {
     invoke(request: LlmRequest): Promise<LlmResponse> {
       log.debug({ systemPromptLength: request.systemPrompt.length }, 'Mock LLM invocation');
 
-      const content = createMockResponse(request.systemPrompt);
+      const content = createMockResponse(request.systemPrompt, request.userMessage);
 
       return Promise.resolve({
         content,

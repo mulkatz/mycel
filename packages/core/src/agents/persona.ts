@@ -8,6 +8,8 @@ import { invokeAndValidate } from '../llm/invoke-and-validate.js';
 
 const log = createChildLogger('agent:persona');
 
+const MAX_GAPS_TO_PRESENT = 3;
+
 export function createPersonaNode(
   personaConfig: PersonaConfig,
   llmClient: LlmClient,
@@ -18,17 +20,20 @@ export function createPersonaNode(
       'Generating persona response',
     );
 
-    const gaps = state.gapReasoningOutput?.result.gaps ?? [];
-    const followUpQuestions = state.gapReasoningOutput?.result.followUpQuestions ?? [];
+    const allGaps = state.gapReasoningOutput?.result.gaps ?? [];
+    const allFollowUpQuestions = state.gapReasoningOutput?.result.followUpQuestions ?? [];
+
+    const topGaps = allGaps.slice(0, MAX_GAPS_TO_PRESENT);
+    const topQuestions = allFollowUpQuestions.slice(0, MAX_GAPS_TO_PRESENT);
 
     const gapSummary =
-      gaps.length > 0
-        ? gaps.map((g) => `- ${g.field} (${g.priority}): ${g.description}`).join('\n')
+      topGaps.length > 0
+        ? topGaps.map((g) => `- ${g.field} (${g.priority}): ${g.description}`).join('\n')
         : 'No gaps identified.';
 
     const questionSummary =
-      followUpQuestions.length > 0
-        ? followUpQuestions.map((q) => `- ${q}`).join('\n')
+      topQuestions.length > 0
+        ? topQuestions.map((q) => `- ${q}`).join('\n')
         : 'No follow-up questions needed.';
 
     let followUpContext = '';
@@ -47,6 +52,12 @@ Acknowledge the new information and only ask about remaining gaps.
       }
     }
 
+    const hasGaps = topGaps.length > 0;
+    const maxQuestions = Math.min(
+      personaConfig.promptBehavior.maxFollowUpQuestions,
+      MAX_GAPS_TO_PRESENT,
+    );
+
     const systemPrompt = `${personaConfig.systemPromptTemplate}
 
 Your persona:
@@ -63,13 +74,13 @@ Suggested follow-up questions:
 ${questionSummary}
 ${followUpContext}
 Generate a persona-appropriate response that:
-1. Acknowledges what the user shared
-2. Asks follow-up questions to fill gaps (max ${String(personaConfig.promptBehavior.maxFollowUpQuestions)} questions)
+1. Reflects back what you learned from the user's input — make them feel heard and valued
+2. ${hasGaps ? `Asks follow-up questions to fill gaps (max ${String(maxQuestions)} questions)` : 'Generates a warm closing message thanking the user for their contribution. Do NOT force follow-up questions if there are no gaps.'}
 ${personaConfig.promptBehavior.encourageStorytelling ? '3. Encourages the user to share more stories and details' : ''}
 
 Respond with a JSON object containing:
 - response: your persona response text
-- followUpQuestions: array of follow-up questions
+- followUpQuestions: array of follow-up questions (empty array if no gaps)
 
 Example response:
 {"response": "Thank you for sharing this fascinating story! I'd love to learn more details.", "followUpQuestions": ["Can you tell me more about the time period?", "Do you have any written sources about this?"]}`;
@@ -89,7 +100,7 @@ Example response:
       agentRole: 'persona',
       result: {
         response: result.response,
-        followUpQuestions: result.followUpQuestions,
+        followUpQuestions: result.followUpQuestions.slice(0, maxQuestions),
       },
       confidence: 1.0,
     };

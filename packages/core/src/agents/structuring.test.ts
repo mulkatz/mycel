@@ -51,6 +51,41 @@ function createMockState(): PipelineGraphState {
   };
 }
 
+function createUncategorizedState(): PipelineGraphState {
+  return {
+    sessionId: 'test-session',
+    input: {
+      sessionId: 'test-session',
+      content: 'I remember the summers here were always so beautiful as a child',
+      metadata: {},
+    },
+    classifierOutput: {
+      agentRole: 'classifier',
+      result: {
+        categoryId: '_uncategorized',
+        confidence: 0.3,
+        summary: 'Personal childhood memory about summers',
+        suggestedCategoryLabel: 'Childhood Memories',
+      },
+      confidence: 0.3,
+    },
+    contextDispatcherOutput: undefined,
+    gapReasoningOutput: {
+      agentRole: 'gap-reasoning',
+      result: {
+        gaps: [
+          { field: 'timeframe', description: 'When did this happen?', priority: 'medium' },
+        ],
+        followUpQuestions: ['When did this happen?'],
+      },
+      confidence: 1.0,
+    },
+    personaOutput: undefined,
+    structuringOutput: undefined,
+    turnContext: undefined,
+  };
+}
+
 describe('createStructuringNode', () => {
   it('should create a structured KnowledgeEntry from LLM response', async () => {
     const mockLlm: LlmClient = {
@@ -96,7 +131,7 @@ describe('createStructuringNode', () => {
     await expect(node(stateWithoutClassifier)).rejects.toThrow('classifier output');
   });
 
-  it('should throw for unknown category', async () => {
+  it('should throw for unknown category that is not _uncategorized', async () => {
     const mockLlm: LlmClient = { invoke: vi.fn() };
 
     const node = createStructuringNode(domainConfig, mockLlm);
@@ -138,5 +173,63 @@ describe('createStructuringNode', () => {
 
     const result = await node(stateNoGaps);
     expect(result.structuringOutput?.result.entry.followUp).toBeUndefined();
+  });
+
+  it('should handle _uncategorized entries without throwing', async () => {
+    const mockLlm: LlmClient = {
+      invoke: vi.fn().mockResolvedValue({
+        content: JSON.stringify({
+          title: 'Summer Memories',
+          content: 'A personal account of childhood summers.',
+          structuredData: {
+            suggestedCategoryLabel: 'Childhood Memories',
+            topicKeywords: ['childhood', 'summer', 'village', 'personal memory'],
+          },
+          tags: ['personal', 'memories'],
+          isComplete: false,
+          missingFields: ['timeframe', 'location'],
+        }),
+      }),
+    };
+
+    const node = createStructuringNode(domainConfig, mockLlm);
+    const result = await node(createUncategorizedState());
+
+    expect(result.structuringOutput).toBeDefined();
+
+    if (!result.structuringOutput) throw new Error('Expected structuringOutput');
+    const { entry } = result.structuringOutput.result;
+    expect(entry.categoryId).toBe('_uncategorized');
+    expect(entry.title).toBe('Summer Memories');
+    expect(entry.structuredData).toHaveProperty('suggestedCategoryLabel', 'Childhood Memories');
+    expect(entry.structuredData).toHaveProperty('topicKeywords');
+    expect(entry.id).toBeTruthy();
+  });
+
+  it('should use uncategorized prompt for _uncategorized entries', async () => {
+    const mockLlm: LlmClient = {
+      invoke: vi.fn().mockResolvedValue({
+        content: JSON.stringify({
+          title: 'Test',
+          content: 'Test',
+          structuredData: { suggestedCategoryLabel: 'Test', topicKeywords: ['test'] },
+          tags: [],
+          isComplete: false,
+          missingFields: [],
+        }),
+      }),
+    };
+
+    const node = createStructuringNode(domainConfig, mockLlm);
+    await node(createUncategorizedState());
+
+    const calls = (mockLlm.invoke as ReturnType<typeof vi.fn>).mock.calls as Array<
+      [{ systemPrompt: string }]
+    >;
+    const prompt = calls[0][0].systemPrompt;
+    expect(prompt).toContain('uncategorized');
+    expect(prompt).toContain('suggestedCategoryLabel');
+    expect(prompt).toContain('topicKeywords');
+    expect(prompt).not.toContain('Required fields');
   });
 });

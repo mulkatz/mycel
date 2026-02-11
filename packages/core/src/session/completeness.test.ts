@@ -89,4 +89,27 @@ describe('calculateCompleteness', () => {
     const entry = createEntry('history', { relatedPlaces: 'Village center' });
     expect(calculateCompleteness(entry, domainConfig)).toBe(0);
   });
+
+  it('should return 1.0 for _uncategorized entry with suggestedCategoryLabel, topicKeywords, and content', () => {
+    const entry = createEntry('_uncategorized', {
+      suggestedCategoryLabel: 'Childhood Memories',
+      topicKeywords: ['childhood', 'summer'],
+    });
+    expect(calculateCompleteness(entry, domainConfig)).toBeCloseTo(1.0);
+  });
+
+  it('should return partial score for _uncategorized entry missing metadata', () => {
+    const entry = createEntry('_uncategorized', {});
+    // Has content (from createEntry) but no suggestedCategoryLabel or topicKeywords
+    expect(calculateCompleteness(entry, domainConfig)).toBeCloseTo(1 / 3);
+  });
+
+  it('should count empty topicKeywords array as missing', () => {
+    const entry = createEntry('_uncategorized', {
+      suggestedCategoryLabel: 'Fishing',
+      topicKeywords: [],
+    });
+    // Has content + suggestedCategoryLabel but no topicKeywords
+    expect(calculateCompleteness(entry, domainConfig)).toBeCloseTo(2 / 3);
+  });
 });
