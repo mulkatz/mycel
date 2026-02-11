@@ -1,0 +1,6 @@
+# GCP Project Configuration
+# Copy this file to terraform.tfvars and fill in your values.
+# NEVER commit terraform.tfvars – it is gitignored.
+
+project_id = "your-gcp-project-id"
+region     = "europe-west1"

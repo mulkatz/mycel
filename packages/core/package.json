@@ -1,0 +1,20 @@
+{
+  "name": "@mycel/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI engine – agents, orchestration, and RAG pipeline for Mycel",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@mycel/shared": "*",
+    "@mycel/schemas": "*",
+    "@mycel/ingestion": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

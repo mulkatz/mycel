@@ -1,0 +1,30 @@
+{
+  "$schema": "https://mycel.com/schemas/domain/v1",
+  "name": "community-knowledge",
+  "version": "1.0.0",
+  "description": "Knowledge base for a local community",
+  "categories": [
+    {
+      "id": "history",
+      "label": "History & Heritage",
+      "description": "Historical events, traditions, and cultural heritage",
+      "requiredFields": ["period", "sources"],
+      "optionalFields": ["relatedPlaces", "relatedPersons"]
+    },
+    {
+      "id": "nature",
+      "label": "Nature & Environment",
+      "description": "Local flora, fauna, landscapes, and environmental data"
+    },
+    {
+      "id": "organizations",
+      "label": "Organizations & Groups",
+      "description": "Clubs, associations, initiatives, and their activities"
+    }
+  ],
+  "ingestion": {
+    "allowedModalities": ["audio", "image", "text"],
+    "primaryLanguage": "de",
+    "supportedLanguages": ["de", "en"]
+  }
+}
