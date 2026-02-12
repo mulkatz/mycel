@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Hono } from 'hono';
 import { createInMemorySessionRepository } from '@mycel/core/src/repositories/in-memory-session.repository.js';
 import { createInMemoryKnowledgeRepository } from '@mycel/core/src/repositories/in-memory-knowledge.repository.js';
 import { createInMemorySchemaRepository } from '@mycel/core/src/repositories/in-memory-schema.repository.js';
+import type { TenantRepositories, SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositories.js';
 import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
-import { createApp } from '../app.js';
+import { createTestApp } from '../test-helpers.js';
+import type { AppEnv } from '../types.js';
 
 describe('Entry API Routes', () => {
-  let app: ReturnType<typeof createApp>;
+  let app: Hono<AppEnv>;
   let knowledgeRepo: ReturnType<typeof createInMemoryKnowledgeRepository>;
 
   beforeEach(() => {
@@ -16,12 +19,15 @@ describe('Entry API Routes', () => {
 
     knowledgeRepo = createInMemoryKnowledgeRepository();
 
-    app = createApp({
+    const tenantRepos = {
       sessionRepository: createInMemorySessionRepository(),
       knowledgeRepository: knowledgeRepo,
       schemaRepository: createInMemorySchemaRepository(),
-      llmClient,
-    });
+    } as TenantRepositories;
+
+    const sharedDeps = { llmClient } as SharedDeps;
+
+    app = createTestApp(tenantRepos, sharedDeps);
   });
 
   describe('GET /entries/:entryId/enrichment', () => {

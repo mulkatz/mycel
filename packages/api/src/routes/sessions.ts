@@ -1,35 +1,21 @@
 import { Hono } from 'hono';
-import type { SessionRepository } from '@mycel/core/src/repositories/session.repository.js';
-import type { KnowledgeRepository } from '@mycel/core/src/repositories/knowledge.repository.js';
-import type { SchemaRepository } from '@mycel/core/src/repositories/schema.repository.js';
-import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
-import type { EmbeddingClient } from '@mycel/core/src/embedding/embedding-client.js';
-import type { FieldStatsRepository } from '@mycel/core/src/repositories/field-stats.repository.js';
-import type { EnrichmentOrchestrator } from '@mycel/core/src/services/enrichment/types.js';
+import type { SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositories.js';
 import { createSessionManager } from '@mycel/core/src/session/session-manager.js';
 import { SessionError } from '@mycel/shared/src/utils/errors.js';
 import type { AppEnv } from '../types.js';
 import { CreateSessionSchema, CreateTurnSchema } from '../schemas/requests.js';
 
-export interface SessionRouteDeps {
-  readonly sessionRepository: SessionRepository;
-  readonly knowledgeRepository: KnowledgeRepository;
-  readonly schemaRepository: SchemaRepository;
-  readonly llmClient: LlmClient;
-  readonly embeddingClient?: EmbeddingClient;
-  readonly fieldStatsRepository?: FieldStatsRepository;
-  readonly enrichmentOrchestrator?: EnrichmentOrchestrator;
-}
-
-export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
+export function createSessionRoutes(shared: SharedDeps): Hono<AppEnv> {
   const sessions = new Hono<AppEnv>();
 
   sessions.post('/', async (c) => {
     const body = CreateSessionSchema.parse(await c.req.json());
+    const { sessionRepository, knowledgeRepository, schemaRepository, fieldStatsRepository, enrichmentOrchestrator } =
+      c.get('tenantRepos');
 
     const domainSchema =
-      (await deps.schemaRepository.getDomainSchemaByName(body.domainSchemaId)) ??
-      (await deps.schemaRepository.getDomainSchema(body.domainSchemaId));
+      (await schemaRepository.getDomainSchemaByName(body.domainSchemaId)) ??
+      (await schemaRepository.getDomainSchema(body.domainSchemaId));
     if (!domainSchema) {
       return c.json(
         {
@@ -42,8 +28,8 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
     }
 
     const personaSchema =
-      (await deps.schemaRepository.getPersonaSchemaByName(body.personaSchemaId)) ??
-      (await deps.schemaRepository.getPersonaSchema(body.personaSchemaId));
+      (await schemaRepository.getPersonaSchemaByName(body.personaSchemaId)) ??
+      (await schemaRepository.getPersonaSchema(body.personaSchemaId));
     if (!personaSchema) {
       return c.json(
         {
@@ -59,12 +45,12 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
       pipelineConfig: {
         domainConfig: domainSchema.config,
         personaConfig: personaSchema.config,
-        llmClient: deps.llmClient,
+        llmClient: shared.llmClient,
       },
-      sessionRepository: deps.sessionRepository,
-      knowledgeRepository: deps.knowledgeRepository,
-      embeddingClient: deps.embeddingClient,
-      fieldStatsRepository: deps.fieldStatsRepository,
+      sessionRepository,
+      knowledgeRepository,
+      embeddingClient: shared.embeddingClient,
+      fieldStatsRepository,
     });
 
     const result = await sessionManager.initSession({ source: 'api' });
@@ -82,8 +68,10 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
   sessions.post('/:sessionId/turns', async (c) => {
     const { sessionId } = c.req.param();
     const body = CreateTurnSchema.parse(await c.req.json());
+    const { sessionRepository, knowledgeRepository, schemaRepository, fieldStatsRepository, enrichmentOrchestrator } =
+      c.get('tenantRepos');
 
-    const session = await deps.sessionRepository.getSessionWithTurns(sessionId);
+    const session = await sessionRepository.getSessionWithTurns(sessionId);
     if (!session) {
       throw new SessionError(`Session not found: ${sessionId}`);
     }
@@ -91,10 +79,10 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
       throw new SessionError(`Session is already ${session.status}: ${sessionId}`);
     }
 
-    const domainSchema = await deps.schemaRepository.getDomainSchemaByName(
+    const domainSchema = await schemaRepository.getDomainSchemaByName(
       session.domainConfigName,
     );
-    const personaSchema = await deps.schemaRepository.getPersonaSchemaByName(
+    const personaSchema = await schemaRepository.getPersonaSchemaByName(
       session.personaConfigName,
     );
 
@@ -109,13 +97,13 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
       pipelineConfig: {
         domainConfig: domainSchema.config,
         personaConfig: personaSchema.config,
-        llmClient: deps.llmClient,
+        llmClient: shared.llmClient,
       },
-      sessionRepository: deps.sessionRepository,
-      knowledgeRepository: deps.knowledgeRepository,
-      embeddingClient: deps.embeddingClient,
-      fieldStatsRepository: deps.fieldStatsRepository,
-      enrichmentOrchestrator: enableEnrichment ? deps.enrichmentOrchestrator : undefined,
+      sessionRepository,
+      knowledgeRepository,
+      embeddingClient: shared.embeddingClient,
+      fieldStatsRepository,
+      enrichmentOrchestrator: enableEnrichment ? enrichmentOrchestrator : undefined,
     });
 
     const isFollowUp = session.turns.length > 0;
@@ -136,13 +124,14 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
 
   sessions.get('/:sessionId', async (c) => {
     const { sessionId } = c.req.param();
+    const { sessionRepository, knowledgeRepository } = c.get('tenantRepos');
 
-    const session = await deps.sessionRepository.getSessionWithTurns(sessionId);
+    const session = await sessionRepository.getSessionWithTurns(sessionId);
     if (!session) {
       throw new SessionError(`Session not found: ${sessionId}`);
     }
 
-    const entries = await deps.knowledgeRepository.getBySession(sessionId);
+    const entries = await knowledgeRepository.getBySession(sessionId);
 
     return c.json({
       sessionId: session.id,
@@ -156,16 +145,18 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
 
   sessions.post('/:sessionId/end', async (c) => {
     const { sessionId } = c.req.param();
+    const { sessionRepository, knowledgeRepository, schemaRepository, fieldStatsRepository } =
+      c.get('tenantRepos');
 
-    const session = await deps.sessionRepository.getSessionWithTurns(sessionId);
+    const session = await sessionRepository.getSessionWithTurns(sessionId);
     if (!session) {
       throw new SessionError(`Session not found: ${sessionId}`);
     }
 
-    const domainSchema = await deps.schemaRepository.getDomainSchemaByName(
+    const domainSchema = await schemaRepository.getDomainSchemaByName(
       session.domainConfigName,
     );
-    const personaSchema = await deps.schemaRepository.getPersonaSchemaByName(
+    const personaSchema = await schemaRepository.getPersonaSchemaByName(
       session.personaConfigName,
     );
 
@@ -177,16 +168,16 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
       pipelineConfig: {
         domainConfig: domainSchema.config,
         personaConfig: personaSchema.config,
-        llmClient: deps.llmClient,
+        llmClient: shared.llmClient,
       },
-      sessionRepository: deps.sessionRepository,
-      knowledgeRepository: deps.knowledgeRepository,
-      embeddingClient: deps.embeddingClient,
-      fieldStatsRepository: deps.fieldStatsRepository,
+      sessionRepository,
+      knowledgeRepository,
+      embeddingClient: shared.embeddingClient,
+      fieldStatsRepository,
     });
 
     const ended = await sessionManager.endSession(sessionId);
-    const entries = await deps.knowledgeRepository.getBySession(sessionId);
+    const entries = await knowledgeRepository.getBySession(sessionId);
 
     return c.json({
       sessionId: ended.id,

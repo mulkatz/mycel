@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Hono } from 'hono';
 import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
 import type { SchemaRepository } from '@mycel/core/src/repositories/schema.repository.js';
 import { createInMemorySessionRepository } from '@mycel/core/src/repositories/in-memory-session.repository.js';
 import { createInMemoryKnowledgeRepository } from '@mycel/core/src/repositories/in-memory-knowledge.repository.js';
 import { createInMemorySchemaRepository } from '@mycel/core/src/repositories/in-memory-schema.repository.js';
+import type { TenantRepositories, SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositories.js';
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
 import type { PersonaConfig } from '@mycel/schemas/src/persona.schema.js';
-import { createApp } from '../app.js';
+import { createTestApp } from '../test-helpers.js';
+import type { AppEnv } from '../types.js';
 
 const domainConfig: DomainConfig = {
   name: 'test-domain',
@@ -149,19 +152,24 @@ function jsonPost(path: string, body: Record<string, unknown>): RequestInit {
 }
 
 describe('API Routes', () => {
-  let app: ReturnType<typeof createApp>;
+  let app: Hono<AppEnv>;
   let schemaRepo: SchemaRepository;
 
   beforeEach(async () => {
     schemaRepo = createInMemorySchemaRepository();
     await seedSchemaRepo(schemaRepo);
 
-    app = createApp({
+    const llmClient = createMockLlm();
+
+    const tenantRepos = {
       sessionRepository: createInMemorySessionRepository(),
       knowledgeRepository: createInMemoryKnowledgeRepository(),
       schemaRepository: schemaRepo,
-      llmClient: createMockLlm(),
-    });
+    } as TenantRepositories;
+
+    const sharedDeps = { llmClient } as SharedDeps;
+
+    app = createTestApp(tenantRepos, sharedDeps);
   });
 
   describe('GET /health', () => {

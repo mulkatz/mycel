@@ -1,5 +1,5 @@
-import type { Firestore } from '@google-cloud/firestore';
 import { Timestamp } from '@google-cloud/firestore';
+import type { FirestoreBase } from './firestore-types.js';
 import type { EvolutionProposal } from '@mycel/shared/src/types/evolution.types.js';
 import { PersistenceError } from '@mycel/shared/src/utils/errors.js';
 import type {
@@ -46,9 +46,9 @@ function proposalFromDoc(id: string, data: EvolutionProposalDocument): Evolution
 }
 
 export function createFirestoreEvolutionProposalRepository(
-  db: Firestore,
+  base: FirestoreBase,
 ): EvolutionProposalRepository {
-  const collectionRef = db.collection(COLLECTION);
+  const collectionRef = base.collection(COLLECTION);
 
   return {
     async create(input: CreateEvolutionProposalInput): Promise<EvolutionProposal> {

@@ -1,22 +1,12 @@
 import { serve } from '@hono/node-server';
 import { createFirestoreClient } from '@mycel/core/src/infrastructure/firestore-client.js';
-import { createFirestoreSessionRepository } from '@mycel/core/src/infrastructure/firestore-session.repository.js';
-import { createFirestoreKnowledgeRepository } from '@mycel/core/src/infrastructure/firestore-knowledge.repository.js';
-import { createFirestoreSchemaRepository } from '@mycel/core/src/infrastructure/firestore-schema.repository.js';
 import { createLlmClient } from '@mycel/core/src/llm/llm-client.js';
 import { createTextLlmClient } from '@mycel/core/src/llm/text-llm-client.js';
 import { createVertexEmbeddingClient } from '@mycel/core/src/embedding/vertex-embedding-client.js';
 import { createMockEmbeddingClient } from '@mycel/core/src/embedding/mock-embedding-client.js';
-import { createDocumentGenerator } from '@mycel/core/src/services/document-generator/document-generator.js';
 import { createWebSearchClient } from '@mycel/core/src/services/web-search/web-search-client.js';
 import { createMockWebSearchClient } from '@mycel/core/src/services/web-search/mock-web-search-client.js';
-import { createFirestoreSchemaProposalRepository } from '@mycel/core/src/infrastructure/firestore-schema-proposal.repository.js';
-import { createFirestoreEvolutionProposalRepository } from '@mycel/core/src/infrastructure/firestore-evolution-proposal.repository.js';
-import { createFirestoreFieldStatsRepository } from '@mycel/core/src/infrastructure/firestore-field-stats.repository.js';
-import { createSchemaGenerator } from '@mycel/core/src/services/schema-generator/schema-generator.js';
-import { createSchemaEvolutionService } from '@mycel/core/src/services/schema-evolution/schema-evolution.js';
 import { createFirestoreSearchCacheRepository } from '@mycel/core/src/infrastructure/firestore-search-cache.repository.js';
-import { createEnrichmentOrchestrator } from '@mycel/core/src/services/enrichment/enrichment-orchestrator.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { createApp } from './app.js';
 
@@ -33,16 +23,6 @@ async function main(): Promise<void> {
       ? createMockEmbeddingClient()
       : createVertexEmbeddingClient();
 
-  const knowledgeRepository = createFirestoreKnowledgeRepository(db);
-  const schemaRepository = createFirestoreSchemaRepository(db);
-
-  const documentGenerator = createDocumentGenerator({
-    knowledgeRepository,
-    schemaRepository,
-    textLlmClient,
-    firestoreClient: db,
-  });
-
   const projectId = process.env['MYCEL_GCP_PROJECT_ID'] ?? process.env['GCP_PROJECT_ID'] ?? '';
   const aiLocation = process.env['VERTEX_AI_LOCATION'] ?? 'europe-west1';
 
@@ -51,56 +31,18 @@ async function main(): Promise<void> {
       ? createMockWebSearchClient()
       : createWebSearchClient({ projectId, location: aiLocation });
 
-  const proposalRepository = createFirestoreSchemaProposalRepository(db);
-  const evolutionProposalRepository = createFirestoreEvolutionProposalRepository(db);
-  const fieldStatsRepository = createFirestoreFieldStatsRepository(db);
-
-  const schemaGenerator = createSchemaGenerator({
-    llmClient,
-    webSearchClient,
-    proposalRepository,
-    schemaRepository,
-  });
-
-  const schemaEvolutionService = createSchemaEvolutionService(
-    {
-      knowledgeRepository,
-      schemaRepository,
-      proposalRepository: evolutionProposalRepository,
-      fieldStatsRepository,
-      llmClient,
-    },
-    { firestoreClient: db },
-  );
-
   const searchCacheRepository = createFirestoreSearchCacheRepository(db);
 
-  const enrichmentOrchestrator = createEnrichmentOrchestrator(
-    {
+  const app = createApp({
+    db,
+    projectId,
+    sharedDeps: {
       llmClient,
+      textLlmClient,
+      embeddingClient,
       webSearchClient,
-      knowledgeRepository,
       searchCacheRepository,
     },
-    {
-      maxSearchesPerTurn: 3,
-      domainSchemaId: '',
-      webSearchMode: 'enrichment',
-      validationMode: 'flag_conflicts',
-    },
-  );
-
-  const app = createApp({
-    sessionRepository: createFirestoreSessionRepository(db),
-    knowledgeRepository,
-    schemaRepository,
-    llmClient,
-    embeddingClient,
-    documentGenerator,
-    schemaGenerator,
-    schemaEvolutionService,
-    fieldStatsRepository,
-    enrichmentOrchestrator,
   });
 
   log.info({ port }, 'Starting Mycel API server');

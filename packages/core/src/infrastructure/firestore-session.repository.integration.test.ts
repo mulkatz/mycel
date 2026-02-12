@@ -23,11 +23,12 @@ function createTestTurnInput(turnNumber: number): CreateTurnInput {
 
 describe('FirestoreSessionRepository (integration)', () => {
   const db = new Firestore({ projectId: 'mycel-test' });
-  const repo = createFirestoreSessionRepository(db);
+  const tenantBase = db.collection('tenants').doc('test-tenant');
+  const repo = createFirestoreSessionRepository(tenantBase);
 
   beforeEach(async () => {
     // Clear sessions collection
-    const sessions = await db.collection('sessions').listDocuments();
+    const sessions = await tenantBase.collection('sessions').listDocuments();
     for (const doc of sessions) {
       const turns = await doc.collection('turns').listDocuments();
       for (const turn of turns) {

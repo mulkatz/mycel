@@ -1,22 +1,16 @@
 import { Hono } from 'hono';
-import type { DocumentGenerator } from '@mycel/core/src/services/document-generator/types.js';
-import type { SchemaRepository } from '@mycel/core/src/repositories/schema.repository.js';
 import type { AppEnv } from '../types.js';
 
-export interface DocumentRouteDeps {
-  readonly documentGenerator: DocumentGenerator;
-  readonly schemaRepository: SchemaRepository;
-}
-
-export function createDocumentRoutes(deps: DocumentRouteDeps): Hono<AppEnv> {
+export function createDocumentRoutes(): Hono<AppEnv> {
   const docs = new Hono<AppEnv>();
 
   docs.post('/:domainSchemaId/documents/generate', async (c) => {
     const { domainSchemaId } = c.req.param();
+    const { documentGenerator, schemaRepository } = c.get('tenantRepos');
 
     const domainSchema =
-      (await deps.schemaRepository.getDomainSchemaByName(domainSchemaId)) ??
-      (await deps.schemaRepository.getDomainSchema(domainSchemaId));
+      (await schemaRepository.getDomainSchemaByName(domainSchemaId)) ??
+      (await schemaRepository.getDomainSchema(domainSchemaId));
     if (!domainSchema) {
       return c.json(
         {
@@ -28,7 +22,7 @@ export function createDocumentRoutes(deps: DocumentRouteDeps): Hono<AppEnv> {
       );
     }
 
-    const result = await deps.documentGenerator.generate({ domainSchemaId });
+    const result = await documentGenerator.generate({ domainSchemaId });
 
     return c.json({
       status: 'completed',
@@ -44,8 +38,9 @@ export function createDocumentRoutes(deps: DocumentRouteDeps): Hono<AppEnv> {
 
   docs.get('/:domainSchemaId/documents/latest', async (c) => {
     const { domainSchemaId } = c.req.param();
+    const { documentGenerator } = c.get('tenantRepos');
 
-    const result = await deps.documentGenerator.getLatest(domainSchemaId);
+    const result = await documentGenerator.getLatest(domainSchemaId);
     if (!result) {
       return c.json(
         {
@@ -63,8 +58,9 @@ export function createDocumentRoutes(deps: DocumentRouteDeps): Hono<AppEnv> {
 
   docs.get('/:domainSchemaId/documents/latest/meta', async (c) => {
     const { domainSchemaId } = c.req.param();
+    const { documentGenerator } = c.get('tenantRepos');
 
-    const result = await deps.documentGenerator.getLatest(domainSchemaId);
+    const result = await documentGenerator.getLatest(domainSchemaId);
     if (!result) {
       return c.json(
         {
@@ -81,8 +77,9 @@ export function createDocumentRoutes(deps: DocumentRouteDeps): Hono<AppEnv> {
 
   docs.get('/:domainSchemaId/documents/latest/:filename', async (c) => {
     const { domainSchemaId, filename } = c.req.param();
+    const { documentGenerator } = c.get('tenantRepos');
 
-    const result = await deps.documentGenerator.getLatest(domainSchemaId);
+    const result = await documentGenerator.getLatest(domainSchemaId);
     if (!result) {
       return c.json(
         {

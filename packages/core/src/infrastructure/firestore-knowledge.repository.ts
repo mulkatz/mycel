@@ -1,5 +1,5 @@
-import type { Firestore } from '@google-cloud/firestore';
 import { FieldValue, Timestamp } from '@google-cloud/firestore';
+import type { FirestoreBase } from './firestore-types.js';
 import type {
   KnowledgeEntry,
   KnowledgeEntryStatus,
@@ -76,8 +76,8 @@ function entryFromDoc(id: string, data: KnowledgeEntryDocument): KnowledgeEntry 
   };
 }
 
-export function createFirestoreKnowledgeRepository(db: Firestore): KnowledgeRepository {
-  const collectionRef = db.collection(COLLECTION);
+export function createFirestoreKnowledgeRepository(base: FirestoreBase): KnowledgeRepository {
+  const collectionRef = base.collection(COLLECTION);
 
   return {
     async create(input: CreateKnowledgeEntryInput): Promise<KnowledgeEntry> {

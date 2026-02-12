@@ -27,13 +27,13 @@ Before starting any task from the backlog:
 - [x] Dynamic Schema Bootstrap via Web Search — Phase 1 of 3 (DomainBehaviorConfig, web search client with Gemini grounding, schema generator, proposal → review → apply flow)
 - [x] Conversational Schema Evolution — Phase 2 of 3 (pattern detection via embedding clustering, evolution proposals for new categories/fields/priority changes, field stats tracking, auto mode, schema-evolution-log)
 - [x] Real-time Web Enrichment — Phase 3 of 3 (async claim extraction + validation during conversations, 7-day search cache, conflict flagging, enrichment metadata on Knowledge Entries, Context Dispatcher integration with verification markers)
+- [x] Authentication and multi-tenancy (GCP Identity Platform anonymous auth, JWT validation via `jose`, tenant-scoped Firestore under `tenants/{tenantId}/`, migration script)
 
 ## In Progress
 
 ## Backlog (ordered by priority)
 - [ ] Audio ingestion (Speech-to-Text via Vertex AI → pipeline)
 - [ ] Image ingestion (Vision API → pipeline)
-- [ ] Authentication and multi-tenancy
 - [ ] Cloud Run hardening (deletion protection, ingress restrictions, Cloud Armor)
 - [ ] Resolve `src → dist` symlink workaround in Dockerfile (refactor to package.json exports or bundler)
 - [ ] Monitoring and observability

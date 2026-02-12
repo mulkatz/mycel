@@ -20,10 +20,11 @@ const testSchema: DomainConfig = {
 
 describe('FirestoreSchemaProposalRepository (integration)', () => {
   const db = new Firestore({ projectId: 'mycel-test' });
-  const repo = createFirestoreSchemaProposalRepository(db);
+  const tenantBase = db.collection('tenants').doc('test-tenant');
+  const repo = createFirestoreSchemaProposalRepository(tenantBase);
 
   beforeEach(async () => {
-    const docs = await db.collection('schema-proposals').listDocuments();
+    const docs = await tenantBase.collection('schema-proposals').listDocuments();
     for (const doc of docs) {
       await doc.delete();
     }

@@ -1,12 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { DomainBehaviorConfigSchema } from '@mycel/schemas/src/domain-behavior.schema.js';
-import type { SchemaGenerator } from '@mycel/core/src/services/schema-generator/types.js';
 import type { AppEnv } from '../types.js';
-
-export interface SchemaGeneratorRouteDeps {
-  readonly schemaGenerator: SchemaGenerator;
-}
 
 const GenerateSchemaRequestSchema = z.object({
   description: z.string().min(10),
@@ -59,14 +54,15 @@ const ReviewRequestSchema = z.object({
   feedback: z.string().optional(),
 });
 
-export function createSchemaGeneratorRoutes(deps: SchemaGeneratorRouteDeps): Hono<AppEnv> {
+export function createSchemaGeneratorRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
 
   routes.post('/generate', async (c) => {
     const body: unknown = await c.req.json();
     const input = GenerateSchemaRequestSchema.parse(body);
+    const { schemaGenerator } = c.get('tenantRepos');
 
-    const result = await deps.schemaGenerator.generate({
+    const result = await schemaGenerator.generate({
       description: input.description,
       language: input.language,
       config: input.config,
@@ -90,8 +86,9 @@ export function createSchemaGeneratorRoutes(deps: SchemaGeneratorRouteDeps): Hon
     const { proposalId } = c.req.param();
     const body: unknown = await c.req.json();
     const input = ReviewRequestSchema.parse(body);
+    const { schemaGenerator } = c.get('tenantRepos');
 
-    const result = await deps.schemaGenerator.reviewProposal(proposalId, {
+    const result = await schemaGenerator.reviewProposal(proposalId, {
       decision: input.decision,
       modifications: input.modifications,
       feedback: input.feedback,
@@ -102,8 +99,9 @@ export function createSchemaGeneratorRoutes(deps: SchemaGeneratorRouteDeps): Hon
 
   routes.get('/proposals/:proposalId', async (c) => {
     const { proposalId } = c.req.param();
+    const { schemaGenerator } = c.get('tenantRepos');
 
-    const proposal = await deps.schemaGenerator.getProposal(proposalId);
+    const proposal = await schemaGenerator.getProposal(proposalId);
     if (!proposal) {
       return c.json(
         {

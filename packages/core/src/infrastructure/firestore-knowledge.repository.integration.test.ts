@@ -27,10 +27,11 @@ function createTestEntryInput(
 
 describe('FirestoreKnowledgeRepository (integration)', () => {
   const db = new Firestore({ projectId: 'mycel-test' });
-  const repo = createFirestoreKnowledgeRepository(db);
+  const tenantBase = db.collection('tenants').doc('test-tenant');
+  const repo = createFirestoreKnowledgeRepository(tenantBase);
 
   beforeEach(async () => {
-    const docs = await db.collection('knowledgeEntries').listDocuments();
+    const docs = await tenantBase.collection('knowledgeEntries').listDocuments();
     for (const doc of docs) {
       await doc.delete();
     }

@@ -1,23 +1,19 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { SchemaEvolutionService } from '@mycel/core/src/services/schema-evolution/types.js';
 import type { AppEnv } from '../types.js';
-
-export interface EvolutionRouteDeps {
-  readonly schemaEvolutionService: SchemaEvolutionService;
-}
 
 const ReviewRequestSchema = z.object({
   decision: z.enum(['approve', 'approve_with_changes', 'reject']),
   feedback: z.string().optional(),
 });
 
-export function createEvolutionRoutes(deps: EvolutionRouteDeps): Hono<AppEnv> {
+export function createEvolutionRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
 
   routes.post('/:domainSchemaId/evolution/analyze', async (c) => {
     const { domainSchemaId } = c.req.param();
-    const proposals = await deps.schemaEvolutionService.analyze(domainSchemaId);
+    const { schemaEvolutionService } = c.get('tenantRepos');
+    const proposals = await schemaEvolutionService.analyze(domainSchemaId);
 
     return c.json(
       {
@@ -37,7 +33,8 @@ export function createEvolutionRoutes(deps: EvolutionRouteDeps): Hono<AppEnv> {
 
   routes.get('/:domainSchemaId/evolution/proposals', async (c) => {
     const { domainSchemaId } = c.req.param();
-    const proposals = await deps.schemaEvolutionService.getProposals(domainSchemaId);
+    const { schemaEvolutionService } = c.get('tenantRepos');
+    const proposals = await schemaEvolutionService.getProposals(domainSchemaId);
 
     return c.json({
       domainSchemaId,
@@ -60,7 +57,8 @@ export function createEvolutionRoutes(deps: EvolutionRouteDeps): Hono<AppEnv> {
 
   routes.get('/:domainSchemaId/evolution/proposals/:proposalId', async (c) => {
     const { proposalId } = c.req.param();
-    const proposals = await deps.schemaEvolutionService.getProposals(c.req.param('domainSchemaId'));
+    const { schemaEvolutionService } = c.get('tenantRepos');
+    const proposals = await schemaEvolutionService.getProposals(c.req.param('domainSchemaId'));
     const proposal = proposals.find((p) => p.id === proposalId);
 
     if (!proposal) {
@@ -81,8 +79,9 @@ export function createEvolutionRoutes(deps: EvolutionRouteDeps): Hono<AppEnv> {
     const { proposalId } = c.req.param();
     const body: unknown = await c.req.json();
     const input = ReviewRequestSchema.parse(body);
+    const { schemaEvolutionService } = c.get('tenantRepos');
 
-    const result = await deps.schemaEvolutionService.reviewProposal(proposalId, {
+    const result = await schemaEvolutionService.reviewProposal(proposalId, {
       decision: input.decision,
       feedback: input.feedback,
     });
@@ -92,7 +91,8 @@ export function createEvolutionRoutes(deps: EvolutionRouteDeps): Hono<AppEnv> {
 
   routes.get('/:domainSchemaId/evolution/stats', async (c) => {
     const { domainSchemaId } = c.req.param();
-    const stats = await deps.schemaEvolutionService.getFieldStats(domainSchemaId);
+    const { schemaEvolutionService } = c.get('tenantRepos');
+    const stats = await schemaEvolutionService.getFieldStats(domainSchemaId);
 
     return c.json({
       domainSchemaId,

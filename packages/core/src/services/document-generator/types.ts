@@ -1,14 +1,14 @@
-import type { Firestore } from '@google-cloud/firestore';
 import type { KnowledgeEntry } from '@mycel/shared/src/types/knowledge.types.js';
 import type { KnowledgeRepository } from '../../repositories/knowledge.repository.js';
 import type { SchemaRepository } from '../../repositories/schema.repository.js';
 import type { TextLlmClient } from '../../llm/text-llm-client.js';
+import type { FirestoreBase } from '../../infrastructure/firestore-types.js';
 
 export interface DocumentGeneratorDeps {
   readonly knowledgeRepository: KnowledgeRepository;
   readonly schemaRepository: SchemaRepository;
   readonly textLlmClient: TextLlmClient;
-  readonly firestoreClient: Firestore;
+  readonly firestoreBase: FirestoreBase;
 }
 
 export interface GenerateDocumentParams {

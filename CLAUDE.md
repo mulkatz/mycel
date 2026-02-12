@@ -36,6 +36,17 @@ Monorepo with five packages:
   `KnowledgeRepository`, `SchemaRepository`). In-memory implementations for tests,
   Firestore implementations for production. Repositories are injected, never imported directly.
 
+## Authentication & Multi-Tenancy
+- GCP Identity Platform with anonymous auth (JWT validated via `jose` + Google JWKS)
+- All API routes (except `/health`) require a valid `Authorization: Bearer <token>` header
+- `tenantId` (from JWT `sub` claim) is available in Hono context: `c.get('tenantId')`
+- All Firestore data is scoped under `tenants/{tenantId}/` — repos accept `FirestoreBase` (= `Firestore | DocumentReference`)
+- **`web-search-cache` is global** (not tenant-scoped) — search results are objective, shared across tenants
+- Tenant-scoped repos are created per-request via middleware and stored in `c.get('tenantRepos')`
+- Shared deps (llmClient, embeddingClient, webSearchClient) are created once at startup
+- Route handlers get repos from `c.get('tenantRepos')`, not from closure deps
+- `createTestApp()` helper in `packages/api/src/test-helpers.ts` bypasses auth for unit tests
+
 ## Code Conventions
 - All code and comments in English
 - Strict TypeScript: no `any`, explicit return types, no unused variables

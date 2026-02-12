@@ -33,14 +33,15 @@ const testPersonaConfig: PersonaConfig = {
 
 describe('FirestoreSchemaRepository (integration)', () => {
   const db = new Firestore({ projectId: 'mycel-test' });
-  const repo = createFirestoreSchemaRepository(db);
+  const tenantBase = db.collection('tenants').doc('test-tenant');
+  const repo = createFirestoreSchemaRepository(tenantBase);
 
   beforeEach(async () => {
-    const domainDocs = await db.collection('domainSchemas').listDocuments();
+    const domainDocs = await tenantBase.collection('domainSchemas').listDocuments();
     for (const doc of domainDocs) {
       await doc.delete();
     }
-    const personaDocs = await db.collection('personaSchemas').listDocuments();
+    const personaDocs = await tenantBase.collection('personaSchemas').listDocuments();
     for (const doc of personaDocs) {
       await doc.delete();
     }

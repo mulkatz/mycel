@@ -1,4 +1,3 @@
-import type { Firestore } from '@google-cloud/firestore';
 import type { EvolutionProposal, FieldStats } from '@mycel/shared/src/types/evolution.types.js';
 import { SchemaGenerationError } from '@mycel/shared/src/utils/errors.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
@@ -10,13 +9,14 @@ import type {
 } from './types.js';
 import { generateProposals } from './evolution-proposer.js';
 import { applyProposal } from './evolution-applier.js';
+import type { FirestoreBase } from '../../infrastructure/firestore-types.js';
 
 const log = createChildLogger('schema-evolution');
 
 const AUTO_APPLY_CONFIDENCE_THRESHOLD = 0.7;
 
 export interface SchemaEvolutionConfig {
-  readonly firestoreClient?: Firestore;
+  readonly firestoreBase?: FirestoreBase;
 }
 
 export function createSchemaEvolutionService(
@@ -73,7 +73,7 @@ export function createSchemaEvolutionService(
                   schemaRepository,
                   knowledgeRepository,
                   proposalRepository,
-                  firestoreClient: config?.firestoreClient,
+                  firestoreBase: config?.firestoreBase,
                 }, true);
 
                 log.info(
@@ -130,7 +130,7 @@ export function createSchemaEvolutionService(
         schemaRepository,
         knowledgeRepository,
         proposalRepository,
-        firestoreClient: config?.firestoreClient,
+        firestoreBase: config?.firestoreBase,
       }, false);
 
       return {

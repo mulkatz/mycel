@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Hono } from 'hono';
 import type { DocumentGenerator, GeneratedDocument } from '@mycel/core/src/services/document-generator/types.js';
 import { createInMemorySchemaRepository } from '@mycel/core/src/repositories/in-memory-schema.repository.js';
 import type { SchemaRepository } from '@mycel/core/src/repositories/schema.repository.js';
+import type { TenantRepositories, SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositories.js';
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
-import { createApp } from '../app.js';
+import { createTestApp } from '../test-helpers.js';
+import type { AppEnv } from '../types.js';
 import { createInMemorySessionRepository } from '@mycel/core/src/repositories/in-memory-session.repository.js';
 import { createInMemoryKnowledgeRepository } from '@mycel/core/src/repositories/in-memory-knowledge.repository.js';
 
@@ -48,7 +51,7 @@ const mockDocument: GeneratedDocument = {
 };
 
 describe('Document Routes', () => {
-  let app: ReturnType<typeof createApp>;
+  let app: Hono<AppEnv>;
   let schemaRepo: SchemaRepository;
   let mockGenerator: DocumentGenerator;
 
@@ -66,13 +69,16 @@ describe('Document Routes', () => {
       getLatest: vi.fn().mockResolvedValue(mockDocument),
     };
 
-    app = createApp({
+    const tenantRepos = {
       sessionRepository: createInMemorySessionRepository(),
       knowledgeRepository: createInMemoryKnowledgeRepository(),
       schemaRepository: schemaRepo,
-      llmClient: { invoke: vi.fn() },
       documentGenerator: mockGenerator,
-    });
+    } as TenantRepositories;
+
+    const sharedDeps = { llmClient: { invoke: vi.fn() } } as unknown as SharedDeps;
+
+    app = createTestApp(tenantRepos, sharedDeps);
   });
 
   describe('POST /domains/:domainSchemaId/documents/generate', () => {

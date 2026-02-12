@@ -1,5 +1,5 @@
-import type { Firestore } from '@google-cloud/firestore';
 import { FieldValue, Timestamp } from '@google-cloud/firestore';
+import type { FirestoreBase } from './firestore-types.js';
 import type {
   Session,
   Turn,
@@ -64,8 +64,8 @@ function turnFromDoc(id: string, data: TurnDocument): Turn {
   };
 }
 
-export function createFirestoreSessionRepository(db: Firestore): SessionRepository {
-  const sessionsRef = db.collection(SESSIONS_COLLECTION);
+export function createFirestoreSessionRepository(base: FirestoreBase): SessionRepository {
+  const sessionsRef = base.collection(SESSIONS_COLLECTION);
 
   return {
     async create(input: CreateSessionInput): Promise<Session> {

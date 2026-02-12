@@ -28,6 +28,29 @@ fi
 # The persona schema name seeded in Firestore
 PERSONA_NAME="Community Chronicler"
 
+# --- Obtain anonymous auth token via Identity Platform ---
+GCP_API_KEY="${MYCEL_GCP_API_KEY:-}"
+if [ -z "$GCP_API_KEY" ]; then
+  echo "❌ MYCEL_GCP_API_KEY is required. Set it to your GCP API key for Identity Platform."
+  echo "   You can find it in the GCP Console → APIs & Services → Credentials."
+  exit 1
+fi
+
+echo "🔑 Obtaining anonymous auth token..."
+TOKEN_RESPONSE=$(curl -s "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${GCP_API_KEY}" \
+  -H 'Content-Type: application/json' \
+  -d '{"returnSecureToken":true}')
+ID_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.idToken // empty')
+
+if [ -z "$ID_TOKEN" ]; then
+  echo "❌ Failed to obtain auth token."
+  echo "   Response: $TOKEN_RESPONSE"
+  exit 1
+fi
+
+AUTH_HEADER="Authorization: Bearer ${ID_TOKEN}"
+echo "   Token obtained (anonymous user)"
+
 echo "🍄 Mycel E2E Test Suite"
 echo "   Target: $SERVICE_URL"
 echo "   Time:   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -59,9 +82,11 @@ request() {
   if [ -n "$data" ]; then
     curl -s -w "\n%{http_code}" -X "$method" "$SERVICE_URL$path" \
       -H "Content-Type: application/json" \
+      -H "$AUTH_HEADER" \
       -d "$data" 2>/dev/null
   else
-    curl -s -w "\n%{http_code}" -X "$method" "$SERVICE_URL$path" 2>/dev/null
+    curl -s -w "\n%{http_code}" -X "$method" "$SERVICE_URL$path" \
+      -H "$AUTH_HEADER" 2>/dev/null
   fi
 }
 

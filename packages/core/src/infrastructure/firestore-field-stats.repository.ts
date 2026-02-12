@@ -1,5 +1,5 @@
-import type { Firestore } from '@google-cloud/firestore';
 import { FieldValue, Timestamp } from '@google-cloud/firestore';
+import type { FirestoreBase } from './firestore-types.js';
 import type { FieldStats } from '@mycel/shared/src/types/evolution.types.js';
 import type { FieldStatsRepository } from '../repositories/field-stats.repository.js';
 
@@ -32,8 +32,8 @@ function statsFromDoc(data: FieldStatsDocument): FieldStats {
   };
 }
 
-export function createFirestoreFieldStatsRepository(db: Firestore): FieldStatsRepository {
-  const collectionRef = db.collection(COLLECTION);
+export function createFirestoreFieldStatsRepository(base: FirestoreBase): FieldStatsRepository {
+  const collectionRef = base.collection(COLLECTION);
 
   return {
     async getByDomain(domainSchemaId: string): Promise<readonly FieldStats[]> {

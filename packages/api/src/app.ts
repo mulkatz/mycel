@@ -1,18 +1,12 @@
+import type { Firestore } from '@google-cloud/firestore';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import type { SessionRepository } from '@mycel/core/src/repositories/session.repository.js';
-import type { KnowledgeRepository } from '@mycel/core/src/repositories/knowledge.repository.js';
-import type { SchemaRepository } from '@mycel/core/src/repositories/schema.repository.js';
-import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
-import type { EmbeddingClient } from '@mycel/core/src/embedding/embedding-client.js';
-import type { DocumentGenerator } from '@mycel/core/src/services/document-generator/types.js';
-import type { SchemaGenerator } from '@mycel/core/src/services/schema-generator/types.js';
-import type { SchemaEvolutionService } from '@mycel/core/src/services/schema-evolution/types.js';
-import type { FieldStatsRepository } from '@mycel/core/src/repositories/field-stats.repository.js';
-import type { EnrichmentOrchestrator } from '@mycel/core/src/services/enrichment/types.js';
+import type { SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositories.js';
 import type { AppEnv } from './types.js';
 import { requestId } from './middleware/request-id.js';
 import { errorHandler } from './middleware/error-handler.js';
+import { createAuthMiddleware } from './middleware/auth.js';
+import { createTenantReposMiddleware } from './middleware/tenant-repos.js';
 import { health } from './routes/health.js';
 import { createSessionRoutes } from './routes/sessions.js';
 import { createDocumentRoutes } from './routes/documents.js';
@@ -23,20 +17,13 @@ import { createChildLogger } from '@mycel/shared/src/logger.js';
 
 const log = createChildLogger('api:server');
 
-export interface AppDependencies {
-  readonly sessionRepository: SessionRepository;
-  readonly knowledgeRepository: KnowledgeRepository;
-  readonly schemaRepository: SchemaRepository;
-  readonly llmClient: LlmClient;
-  readonly embeddingClient?: EmbeddingClient;
-  readonly documentGenerator?: DocumentGenerator;
-  readonly schemaGenerator?: SchemaGenerator;
-  readonly schemaEvolutionService?: SchemaEvolutionService;
-  readonly fieldStatsRepository?: FieldStatsRepository;
-  readonly enrichmentOrchestrator?: EnrichmentOrchestrator;
+export interface AppConfig {
+  readonly db: Firestore;
+  readonly projectId: string;
+  readonly sharedDeps: SharedDeps;
 }
 
-export function createApp(deps: AppDependencies): Hono<AppEnv> {
+export function createApp(config: AppConfig): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   app.use('*', cors());
@@ -61,31 +48,21 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
 
   app.onError(errorHandler);
 
+  // Health — no auth required
   app.route('/health', health);
-  app.route('/sessions', createSessionRoutes(deps));
 
-  if (deps.documentGenerator) {
-    app.route('/domains', createDocumentRoutes({
-      documentGenerator: deps.documentGenerator,
-      schemaRepository: deps.schemaRepository,
-    }));
-  }
+  // Auth middleware — applies to all routes below
+  app.use('*', createAuthMiddleware(config.projectId));
 
-  if (deps.schemaGenerator) {
-    app.route('/domains', createSchemaGeneratorRoutes({
-      schemaGenerator: deps.schemaGenerator,
-    }));
-  }
+  // Tenant repos middleware — creates per-request repos
+  app.use('*', createTenantReposMiddleware(config.db, config.sharedDeps));
 
-  if (deps.schemaEvolutionService) {
-    app.route('/domains', createEvolutionRoutes({
-      schemaEvolutionService: deps.schemaEvolutionService,
-    }));
-  }
-
-  app.route('/entries', createEntryRoutes({
-    knowledgeRepository: deps.knowledgeRepository,
-  }));
+  // Routes — repos come from context via tenantRepos
+  app.route('/sessions', createSessionRoutes(config.sharedDeps));
+  app.route('/domains', createDocumentRoutes());
+  app.route('/domains', createSchemaGeneratorRoutes());
+  app.route('/domains', createEvolutionRoutes());
+  app.route('/entries', createEntryRoutes());
 
   return app;
 }

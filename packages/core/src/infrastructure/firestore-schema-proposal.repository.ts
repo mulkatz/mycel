@@ -1,5 +1,5 @@
-import type { Firestore } from '@google-cloud/firestore';
 import { Timestamp } from '@google-cloud/firestore';
+import type { FirestoreBase } from './firestore-types.js';
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
 import type { DomainBehaviorConfig } from '@mycel/schemas/src/domain-behavior.schema.js';
 import { PersistenceError } from '@mycel/shared/src/utils/errors.js';
@@ -43,8 +43,8 @@ function proposalFromDoc(id: string, data: ProposalDocument): SchemaProposal {
   };
 }
 
-export function createFirestoreSchemaProposalRepository(db: Firestore): SchemaProposalRepository {
-  const collectionRef = db.collection(COLLECTION);
+export function createFirestoreSchemaProposalRepository(base: FirestoreBase): SchemaProposalRepository {
+  const collectionRef = base.collection(COLLECTION);
 
   return {
     async getProposal(id: string): Promise<SchemaProposal | null> {

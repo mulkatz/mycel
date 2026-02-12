@@ -28,7 +28,7 @@ interface PersistedChapterMeta {
 // TODO: Phase 2 — check behavior.documentGeneration for on_session_end/threshold
 
 export function createDocumentGenerator(deps: DocumentGeneratorDeps): DocumentGenerator {
-  const { knowledgeRepository, schemaRepository, textLlmClient, firestoreClient } = deps;
+  const { knowledgeRepository, schemaRepository, textLlmClient, firestoreBase } = deps;
 
   return {
     async generate(params: GenerateDocumentParams): Promise<GeneratedDocument> {
@@ -113,7 +113,7 @@ export function createDocumentGenerator(deps: DocumentGeneratorDeps): DocumentGe
         };
       }
 
-      const docRef = firestoreClient.collection(COLLECTION).doc(params.domainSchemaId);
+      const docRef = firestoreBase.collection(COLLECTION).doc(params.domainSchemaId);
       await docRef.set({
         generatedAt: Timestamp.now(),
         meta,
@@ -137,7 +137,7 @@ export function createDocumentGenerator(deps: DocumentGeneratorDeps): DocumentGe
     },
 
     async getLatest(domainSchemaId: string): Promise<GeneratedDocument | null> {
-      const docRef = firestoreClient.collection(COLLECTION).doc(domainSchemaId);
+      const docRef = firestoreBase.collection(COLLECTION).doc(domainSchemaId);
       const doc = await docRef.get();
 
       if (!doc.exists) {

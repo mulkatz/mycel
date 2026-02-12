@@ -111,7 +111,7 @@ describe('createDocumentGenerator', () => {
       knowledgeRepository: knowledgeRepo,
       schemaRepository: schemaRepo,
       textLlmClient: mockTextLlm,
-      firestoreClient: createMockFirestore(),
+      firestoreBase: createMockFirestore(),
     });
 
     const result = await generator.generate({ domainSchemaId: 'test-domain' });
@@ -158,7 +158,7 @@ describe('createDocumentGenerator', () => {
       knowledgeRepository: knowledgeRepo,
       schemaRepository: schemaRepo,
       textLlmClient: mockTextLlm,
-      firestoreClient: createMockFirestore(),
+      firestoreBase: createMockFirestore(),
     });
 
     const result = await generator.generate({ domainSchemaId: 'empty-domain' });
@@ -199,7 +199,7 @@ describe('createDocumentGenerator', () => {
       knowledgeRepository: knowledgeRepo,
       schemaRepository: schemaRepo,
       textLlmClient: mockTextLlm,
-      firestoreClient: createMockFirestore(),
+      firestoreBase: createMockFirestore(),
     });
 
     const result = await generator.generate({ domainSchemaId: 'test-domain' });
@@ -238,7 +238,7 @@ describe('createDocumentGenerator', () => {
       knowledgeRepository: knowledgeRepo,
       schemaRepository: schemaRepo,
       textLlmClient: mockTextLlm,
-      firestoreClient: mockFirestore,
+      firestoreBase: mockFirestore,
     });
 
     await generator.generate({ domainSchemaId: 'test-domain' });
@@ -260,7 +260,7 @@ describe('createDocumentGenerator', () => {
       knowledgeRepository: knowledgeRepo,
       schemaRepository: schemaRepo,
       textLlmClient: mockTextLlm,
-      firestoreClient: createMockFirestore(),
+      firestoreBase: createMockFirestore(),
     });
 
     await expect(generator.generate({ domainSchemaId: 'nonexistent' }))

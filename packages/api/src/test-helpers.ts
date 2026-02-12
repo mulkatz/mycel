@@ -1,0 +1,46 @@
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import type { TenantRepositories } from '@mycel/core/src/infrastructure/tenant-repositories.js';
+import type { AppEnv } from './types.js';
+import { requestId } from './middleware/request-id.js';
+import { errorHandler } from './middleware/error-handler.js';
+import { health } from './routes/health.js';
+import { createSessionRoutes } from './routes/sessions.js';
+import { createDocumentRoutes } from './routes/documents.js';
+import { createSchemaGeneratorRoutes } from './routes/schema-generator.js';
+import { createEvolutionRoutes } from './routes/evolution.js';
+import { createEntryRoutes } from './routes/entries.js';
+import type { SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositories.js';
+
+/**
+ * Creates a test app that bypasses JWT auth and uses provided tenant repos directly.
+ * For use in unit tests only.
+ */
+export function createTestApp(
+  tenantRepos: TenantRepositories,
+  sharedDeps: SharedDeps,
+): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
+
+  app.use('*', cors());
+  app.use('*', requestId);
+
+  app.onError(errorHandler);
+
+  app.route('/health', health);
+
+  // Mock auth: set fixed tenantId and provided tenant repos
+  app.use('*', async (c, next) => {
+    c.set('tenantId', 'test-tenant');
+    c.set('tenantRepos', tenantRepos);
+    await next();
+  });
+
+  app.route('/sessions', createSessionRoutes(sharedDeps));
+  app.route('/domains', createDocumentRoutes());
+  app.route('/domains', createSchemaGeneratorRoutes());
+  app.route('/domains', createEvolutionRoutes());
+  app.route('/entries', createEntryRoutes());
+
+  return app;
+}

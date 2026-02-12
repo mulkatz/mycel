@@ -1,18 +1,14 @@
 import { Hono } from 'hono';
-import type { KnowledgeRepository } from '@mycel/core/src/repositories/knowledge.repository.js';
 import type { AppEnv } from '../types.js';
 
-export interface EntryRouteDeps {
-  readonly knowledgeRepository: KnowledgeRepository;
-}
-
-export function createEntryRoutes(deps: EntryRouteDeps): Hono<AppEnv> {
+export function createEntryRoutes(): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
 
   routes.get('/:entryId/enrichment', async (c) => {
     const { entryId } = c.req.param();
+    const { knowledgeRepository } = c.get('tenantRepos');
 
-    const entry = await deps.knowledgeRepository.getById(entryId);
+    const entry = await knowledgeRepository.getById(entryId);
     if (!entry) {
       return c.json(
         {

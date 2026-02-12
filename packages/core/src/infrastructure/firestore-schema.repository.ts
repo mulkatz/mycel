@@ -1,5 +1,6 @@
-import type { Firestore } from '@google-cloud/firestore';
 import { Timestamp } from '@google-cloud/firestore';
+import type { FirestoreBase } from './firestore-types.js';
+import { getFirestoreClient } from './firestore-types.js';
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
 import type { PersonaConfig } from '@mycel/schemas/src/persona.schema.js';
 import type { DomainBehaviorConfig } from '@mycel/schemas/src/domain-behavior.schema.js';
@@ -66,9 +67,10 @@ function personaSchemaFromDoc(id: string, data: PersonaSchemaDocument): Persiste
   };
 }
 
-export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository {
-  const domainRef = db.collection(DOMAIN_SCHEMAS_COLLECTION);
-  const personaRef = db.collection(PERSONA_SCHEMAS_COLLECTION);
+export function createFirestoreSchemaRepository(base: FirestoreBase): SchemaRepository {
+  const db = getFirestoreClient(base);
+  const domainRef = base.collection(DOMAIN_SCHEMAS_COLLECTION);
+  const personaRef = base.collection(PERSONA_SCHEMAS_COLLECTION);
 
   return {
     async getDomainSchema(id: string): Promise<PersistedDomainSchema | null> {

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Hono } from 'hono';
 import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
 import { createInMemorySchemaProposalRepository } from '@mycel/core/src/repositories/in-memory-schema-proposal.repository.js';
 import { createInMemorySchemaRepository } from '@mycel/core/src/repositories/in-memory-schema.repository.js';
@@ -6,7 +7,9 @@ import { createInMemorySessionRepository } from '@mycel/core/src/repositories/in
 import { createInMemoryKnowledgeRepository } from '@mycel/core/src/repositories/in-memory-knowledge.repository.js';
 import { createMockWebSearchClient } from '@mycel/core/src/services/web-search/mock-web-search-client.js';
 import { createSchemaGenerator } from '@mycel/core/src/services/schema-generator/schema-generator.js';
-import { createApp } from '../app.js';
+import type { TenantRepositories, SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositories.js';
+import { createTestApp } from '../test-helpers.js';
+import type { AppEnv } from '../types.js';
 
 const analysisResponse = {
   domainType: 'local community',
@@ -58,7 +61,7 @@ function jsonPost(path: string, body: Record<string, unknown>): RequestInit {
 }
 
 describe('Schema Generator API Routes', () => {
-  let app: ReturnType<typeof createApp>;
+  let app: Hono<AppEnv>;
 
   beforeEach(() => {
     const llmClient = createMockLlm();
@@ -73,13 +76,17 @@ describe('Schema Generator API Routes', () => {
       schemaRepository: schemaRepo,
     });
 
-    app = createApp({
+    const tenantRepos = {
       sessionRepository: createInMemorySessionRepository(),
       knowledgeRepository: createInMemoryKnowledgeRepository(),
       schemaRepository: schemaRepo,
-      llmClient,
+      schemaProposalRepository: proposalRepo,
       schemaGenerator,
-    });
+    } as TenantRepositories;
+
+    const sharedDeps = { llmClient } as SharedDeps;
+
+    app = createTestApp(tenantRepos, sharedDeps);
   });
 
   describe('POST /domains/generate', () => {

@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import { ZodError } from 'zod';
+import { errors as joseErrors } from 'jose';
 import { SessionError, LlmError, PersistenceError, SchemaGenerationError } from '@mycel/shared/src/utils/errors.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import type { AppEnv } from '../types.js';
@@ -15,6 +16,21 @@ interface ErrorResponse {
 
 export function errorHandler(err: Error, c: Context<AppEnv>): Response {
   const requestId = c.get('requestId');
+
+  if (
+    err instanceof joseErrors.JWTExpired ||
+    err instanceof joseErrors.JWTClaimValidationFailed ||
+    err instanceof joseErrors.JWSSignatureVerificationFailed ||
+    err instanceof joseErrors.JWTInvalid ||
+    err instanceof joseErrors.JOSEError
+  ) {
+    const body: ErrorResponse = {
+      error: 'Invalid or expired token',
+      code: 'UNAUTHORIZED',
+      requestId,
+    };
+    return c.json(body, 401);
+  }
 
   if (err instanceof ZodError) {
     const details = err.errors.map((e) => `${e.path.join('.')}: ${e.message}`);

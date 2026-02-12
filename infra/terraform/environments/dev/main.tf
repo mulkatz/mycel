@@ -6,6 +6,7 @@ locals {
     "iam.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "aiplatform.googleapis.com",
+    "identitytoolkit.googleapis.com",
   ]
 }
 
@@ -37,6 +38,14 @@ module "artifact_registry" {
 
 module "iam" {
   source = "../../modules/iam"
+
+  project_id = var.project_id
+
+  depends_on = [google_project_service.apis]
+}
+
+module "identity_platform" {
+  source = "../../modules/identity-platform"
 
   project_id = var.project_id
 

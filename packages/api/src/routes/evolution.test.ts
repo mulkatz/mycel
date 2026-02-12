@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Hono } from 'hono';
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
 import type { DomainBehaviorConfig } from '@mycel/schemas/src/domain-behavior.schema.js';
 import { createInMemorySessionRepository } from '@mycel/core/src/repositories/in-memory-session.repository.js';
@@ -7,8 +8,10 @@ import { createInMemorySchemaRepository } from '@mycel/core/src/repositories/in-
 import { createInMemoryEvolutionProposalRepository } from '@mycel/core/src/repositories/in-memory-evolution-proposal.repository.js';
 import { createInMemoryFieldStatsRepository } from '@mycel/core/src/repositories/in-memory-field-stats.repository.js';
 import { createSchemaEvolutionService } from '@mycel/core/src/services/schema-evolution/schema-evolution.js';
+import type { TenantRepositories, SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositories.js';
 import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
-import { createApp } from '../app.js';
+import { createTestApp } from '../test-helpers.js';
+import type { AppEnv } from '../types.js';
 
 const testDomainConfig: DomainConfig = {
   name: 'test-domain',
@@ -48,7 +51,7 @@ function jsonPost(path: string, body: Record<string, unknown>): RequestInit {
 }
 
 describe('Evolution API Routes', () => {
-  let app: ReturnType<typeof createApp>;
+  let app: Hono<AppEnv>;
   let proposalRepo: ReturnType<typeof createInMemoryEvolutionProposalRepository>;
   let fieldStatsRepo: ReturnType<typeof createInMemoryFieldStatsRepository>;
   let schemaRepo: ReturnType<typeof createInMemorySchemaRepository>;
@@ -86,13 +89,18 @@ describe('Evolution API Routes', () => {
       llmClient,
     });
 
-    app = createApp({
+    const tenantRepos = {
       sessionRepository: createInMemorySessionRepository(),
       knowledgeRepository: createInMemoryKnowledgeRepository(),
       schemaRepository: schemaRepo,
-      llmClient,
+      evolutionProposalRepository: proposalRepo,
+      fieldStatsRepository: fieldStatsRepo,
       schemaEvolutionService,
-    });
+    } as TenantRepositories;
+
+    const sharedDeps = { llmClient } as SharedDeps;
+
+    app = createTestApp(tenantRepos, sharedDeps);
   });
 
   describe('POST /domains/:domainSchemaId/evolution/analyze', () => {

@@ -4,10 +4,11 @@ import { createFirestoreFieldStatsRepository } from './firestore-field-stats.rep
 
 describe('FirestoreFieldStatsRepository (integration)', () => {
   const db = new Firestore({ projectId: 'mycel-test' });
-  const repo = createFirestoreFieldStatsRepository(db);
+  const tenantBase = db.collection('tenants').doc('test-tenant');
+  const repo = createFirestoreFieldStatsRepository(tenantBase);
 
   beforeEach(async () => {
-    const docs = await db.collection('field-stats').listDocuments();
+    const docs = await tenantBase.collection('field-stats').listDocuments();
     for (const doc of docs) {
       await doc.delete();
     }

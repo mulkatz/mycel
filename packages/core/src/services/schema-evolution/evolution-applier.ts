@@ -1,4 +1,3 @@
-import type { Firestore } from '@google-cloud/firestore';
 import type { EvolutionProposal } from '@mycel/shared/src/types/evolution.types.js';
 import type { DomainConfig, Category } from '@mycel/schemas/src/domain.schema.js';
 import type { SchemaRepository, PersistedDomainSchema } from '../../repositories/schema.repository.js';
@@ -6,6 +5,7 @@ import type { KnowledgeRepository } from '../../repositories/knowledge.repositor
 import type { EvolutionProposalRepository } from '../../repositories/evolution-proposal.repository.js';
 import { SchemaGenerationError } from '@mycel/shared/src/utils/errors.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
+import type { FirestoreBase } from '../../infrastructure/firestore-types.js';
 
 const log = createChildLogger('schema-evolution:applier');
 
@@ -15,7 +15,7 @@ export interface EvolutionApplierDeps {
   readonly schemaRepository: SchemaRepository;
   readonly knowledgeRepository: KnowledgeRepository;
   readonly proposalRepository: EvolutionProposalRepository;
-  readonly firestoreClient?: Firestore;
+  readonly firestoreBase?: FirestoreBase;
 }
 
 interface EvolutionLogEntry {
@@ -30,16 +30,16 @@ interface EvolutionLogEntry {
 }
 
 async function logEvolution(
-  firestoreClient: Firestore | undefined,
+  firestoreBase: FirestoreBase | undefined,
   entry: EvolutionLogEntry,
 ): Promise<void> {
-  if (!firestoreClient) {
+  if (!firestoreBase) {
     log.info({ ...entry }, 'Evolution applied (no Firestore client for audit log)');
     return;
   }
 
   try {
-    await firestoreClient.collection(EVOLUTION_LOG_COLLECTION).add({
+    await firestoreBase.collection(EVOLUTION_LOG_COLLECTION).add({
       ...entry,
       appliedAt: entry.appliedAt,
     });
@@ -68,7 +68,7 @@ export async function applyProposal(
   deps: EvolutionApplierDeps,
   autoApplied: boolean,
 ): Promise<string> {
-  const { schemaRepository, knowledgeRepository, proposalRepository, firestoreClient } = deps;
+  const { schemaRepository, knowledgeRepository, proposalRepository, firestoreBase } = deps;
   const config = currentSchema.config;
   const previousVersion = parseVersion(config.version);
 
@@ -126,7 +126,7 @@ export async function applyProposal(
         appliedAt: new Date(),
       });
 
-      await logEvolution(firestoreClient, {
+      await logEvolution(firestoreBase, {
         proposalId: proposal.id,
         domainSchemaId: proposal.domainSchemaId,
         type: 'new_category',
@@ -199,7 +199,7 @@ export async function applyProposal(
         appliedAt: new Date(),
       });
 
-      await logEvolution(firestoreClient, {
+      await logEvolution(firestoreBase, {
         proposalId: proposal.id,
         domainSchemaId: proposal.domainSchemaId,
         type: 'new_field',
@@ -265,7 +265,7 @@ export async function applyProposal(
         appliedAt: new Date(),
       });
 
-      await logEvolution(firestoreClient, {
+      await logEvolution(firestoreBase, {
         proposalId: proposal.id,
         domainSchemaId: proposal.domainSchemaId,
         type: 'change_priority',
