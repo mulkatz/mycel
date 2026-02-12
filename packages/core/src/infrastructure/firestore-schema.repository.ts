@@ -2,9 +2,12 @@ import type { Firestore } from '@google-cloud/firestore';
 import { Timestamp } from '@google-cloud/firestore';
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
 import type { PersonaConfig } from '@mycel/schemas/src/persona.schema.js';
+import type { DomainBehaviorConfig } from '@mycel/schemas/src/domain-behavior.schema.js';
+import { resolveBehaviorPreset } from '@mycel/schemas/src/domain-behavior.schema.js';
 import type {
   CreateDomainSchemaInput,
   CreatePersonaSchemaInput,
+  DomainSchemaOrigin,
   PersistedDomainSchema,
   PersistedPersonaSchema,
   SchemaRepository,
@@ -17,6 +20,9 @@ interface DomainSchemaDocument {
   name: string;
   version: number;
   config: Record<string, unknown>;
+  behavior?: Record<string, unknown>;
+  origin?: string;
+  generatedFrom?: string;
   isActive: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -37,6 +43,11 @@ function domainSchemaFromDoc(id: string, data: DomainSchemaDocument): PersistedD
     name: data.name,
     version: data.version,
     config: data.config as unknown as DomainConfig,
+    behavior: data.behavior
+      ? (data.behavior as unknown as DomainBehaviorConfig)
+      : resolveBehaviorPreset('manual'),
+    origin: data.origin ? (data.origin as DomainSchemaOrigin) : 'manual',
+    generatedFrom: data.generatedFrom,
     isActive: data.isActive,
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
@@ -100,10 +111,14 @@ export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository
         await batch.commit();
       }
 
+      const behavior = input.behavior ?? resolveBehaviorPreset('manual');
       const docData: DomainSchemaDocument = {
         name: input.name,
         version: input.version,
         config: input.config as unknown as Record<string, unknown>,
+        behavior: behavior as unknown as Record<string, unknown>,
+        origin: input.origin ?? 'manual',
+        generatedFrom: input.generatedFrom,
         isActive: input.isActive,
         createdAt: now,
         updatedAt: now,

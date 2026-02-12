@@ -49,6 +49,8 @@ function routeAfterPersona(state: PipelineGraphState): string {
   return 'structuring';
 }
 
+// TODO: Phase 3 — check behavior.webSearch for enrichment/full mode
+
 export function createPipeline(config: PipelineConfig): Pipeline {
   log.info(
     { domain: config.domainConfig.name, persona: config.personaConfig.name },

@@ -6,12 +6,14 @@ import type { SchemaRepository } from '@mycel/core/src/repositories/schema.repos
 import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
 import type { EmbeddingClient } from '@mycel/core/src/embedding/embedding-client.js';
 import type { DocumentGenerator } from '@mycel/core/src/services/document-generator/types.js';
+import type { SchemaGenerator } from '@mycel/core/src/services/schema-generator/types.js';
 import type { AppEnv } from './types.js';
 import { requestId } from './middleware/request-id.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { health } from './routes/health.js';
 import { createSessionRoutes } from './routes/sessions.js';
 import { createDocumentRoutes } from './routes/documents.js';
+import { createSchemaGeneratorRoutes } from './routes/schema-generator.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 
 const log = createChildLogger('api:server');
@@ -23,6 +25,7 @@ export interface AppDependencies {
   readonly llmClient: LlmClient;
   readonly embeddingClient?: EmbeddingClient;
   readonly documentGenerator?: DocumentGenerator;
+  readonly schemaGenerator?: SchemaGenerator;
 }
 
 export function createApp(deps: AppDependencies): Hono<AppEnv> {
@@ -57,6 +60,12 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
     app.route('/domains', createDocumentRoutes({
       documentGenerator: deps.documentGenerator,
       schemaRepository: deps.schemaRepository,
+    }));
+  }
+
+  if (deps.schemaGenerator) {
+    app.route('/domains', createSchemaGeneratorRoutes({
+      schemaGenerator: deps.schemaGenerator,
     }));
   }
 

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { resolveBehaviorPreset } from '@mycel/schemas/src/domain-behavior.schema.js';
 import type {
   CreateDomainSchemaInput,
   CreatePersonaSchemaInput,
@@ -49,6 +50,9 @@ export function createInMemorySchemaRepository(): SchemaRepository {
         name: input.name,
         version: input.version,
         config: input.config,
+        behavior: input.behavior ?? resolveBehaviorPreset('manual'),
+        origin: input.origin ?? 'manual',
+        generatedFrom: input.generatedFrom,
         isActive: input.isActive,
         createdAt: now,
         updatedAt: now,

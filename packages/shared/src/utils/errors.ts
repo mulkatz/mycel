@@ -64,3 +64,10 @@ export class PersistenceError extends MycelError {
     this.name = 'PersistenceError';
   }
 }
+
+export class SchemaGenerationError extends MycelError {
+  constructor(message: string, cause?: Error) {
+    super(message, 'SCHEMA_GENERATION_ERROR', cause);
+    this.name = 'SchemaGenerationError';
+  }
+}

@@ -8,6 +8,10 @@ import { createTextLlmClient } from '@mycel/core/src/llm/text-llm-client.js';
 import { createVertexEmbeddingClient } from '@mycel/core/src/embedding/vertex-embedding-client.js';
 import { createMockEmbeddingClient } from '@mycel/core/src/embedding/mock-embedding-client.js';
 import { createDocumentGenerator } from '@mycel/core/src/services/document-generator/document-generator.js';
+import { createWebSearchClient } from '@mycel/core/src/services/web-search/web-search-client.js';
+import { createMockWebSearchClient } from '@mycel/core/src/services/web-search/mock-web-search-client.js';
+import { createFirestoreSchemaProposalRepository } from '@mycel/core/src/infrastructure/firestore-schema-proposal.repository.js';
+import { createSchemaGenerator } from '@mycel/core/src/services/schema-generator/schema-generator.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { createApp } from './app.js';
 
@@ -34,6 +38,23 @@ async function main(): Promise<void> {
     firestoreClient: db,
   });
 
+  const projectId = process.env['MYCEL_GCP_PROJECT_ID'] ?? process.env['GCP_PROJECT_ID'] ?? '';
+  const aiLocation = process.env['VERTEX_AI_LOCATION'] ?? 'europe-west1';
+
+  const webSearchClient =
+    process.env['MYCEL_MOCK_LLM'] === 'true'
+      ? createMockWebSearchClient()
+      : createWebSearchClient({ projectId, location: aiLocation });
+
+  const proposalRepository = createFirestoreSchemaProposalRepository(db);
+
+  const schemaGenerator = createSchemaGenerator({
+    llmClient,
+    webSearchClient,
+    proposalRepository,
+    schemaRepository,
+  });
+
   const app = createApp({
     sessionRepository: createFirestoreSessionRepository(db),
     knowledgeRepository,
@@ -41,6 +62,7 @@ async function main(): Promise<void> {
     llmClient,
     embeddingClient,
     documentGenerator,
+    schemaGenerator,
   });
 
   log.info({ port }, 'Starting Mycel API server');

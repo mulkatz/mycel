@@ -1,11 +1,17 @@
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
 import type { PersonaConfig } from '@mycel/schemas/src/persona.schema.js';
+import type { DomainBehaviorConfig } from '@mycel/schemas/src/domain-behavior.schema.js';
+
+export type DomainSchemaOrigin = 'manual' | 'web_research' | 'hybrid';
 
 export interface PersistedDomainSchema {
   readonly id: string;
   readonly name: string;
   readonly version: number;
   readonly config: DomainConfig;
+  readonly behavior: DomainBehaviorConfig;
+  readonly origin: DomainSchemaOrigin;
+  readonly generatedFrom?: string;
   readonly isActive: boolean;
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -26,6 +32,9 @@ export interface CreateDomainSchemaInput {
   readonly version: number;
   readonly config: DomainConfig;
   readonly isActive: boolean;
+  readonly behavior?: DomainBehaviorConfig;
+  readonly origin?: DomainSchemaOrigin;
+  readonly generatedFrom?: string;
 }
 
 export interface CreatePersonaSchemaInput {

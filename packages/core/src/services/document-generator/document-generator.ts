@@ -25,6 +25,8 @@ interface PersistedChapterMeta {
   readonly gapCount: number;
 }
 
+// TODO: Phase 2 — check behavior.documentGeneration for on_session_end/threshold
+
 export function createDocumentGenerator(deps: DocumentGeneratorDeps): DocumentGenerator {
   const { knowledgeRepository, schemaRepository, textLlmClient, firestoreClient } = deps;
 

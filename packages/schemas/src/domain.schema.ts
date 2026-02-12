@@ -6,6 +6,8 @@ const CategorySchema = z.object({
   description: z.string(),
   requiredFields: z.array(z.string()).optional(),
   optionalFields: z.array(z.string()).optional(),
+  origin: z.enum(['seed', 'discovered', 'web_research']).optional(),
+  sourceUrls: z.array(z.string()).optional(),
 });
 
 const IngestionConfigSchema = z.object({

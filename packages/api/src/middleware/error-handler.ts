@@ -1,6 +1,6 @@
 import type { Context } from 'hono';
 import { ZodError } from 'zod';
-import { SessionError, LlmError, PersistenceError } from '@mycel/shared/src/utils/errors.js';
+import { SessionError, LlmError, PersistenceError, SchemaGenerationError } from '@mycel/shared/src/utils/errors.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import type { AppEnv } from '../types.js';
 
@@ -53,6 +53,17 @@ export function errorHandler(err: Error, c: Context<AppEnv>): Response {
       requestId,
     };
     return c.json(body, 400);
+  }
+
+  if (err instanceof SchemaGenerationError) {
+    const statusCode = err.message.includes('not found') ? 404 : 400;
+    log.error({ requestId, error: err.message }, 'Schema generation error');
+    const body: ErrorResponse = {
+      error: err.message,
+      code: 'SCHEMA_GENERATION_ERROR',
+      requestId,
+    };
+    return c.json(body, statusCode);
   }
 
   if (err instanceof LlmError) {
