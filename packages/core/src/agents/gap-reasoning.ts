@@ -69,12 +69,12 @@ ${suggestedLabel ? `Suggested topic area: ${suggestedLabel}` : ''}
 
 ## Already Known
 ${contextSummary}
-${hasRetrievedContext ? '\nIMPORTANT: Do NOT ask about information that is already captured above. Focus on gaps — what is NOT yet known. If the user shares something already in the knowledge base, acknowledge it briefly and ask about connected, unknown aspects.\n' : ''}
 ${followUpContext}
 Your task is to understand what the user is sharing and ask questions that help capture their knowledge more fully. You are NOT checking against a predefined list of fields.
 
 Rules:
-- Only ask about things the user is likely to know based on their input
+- NEVER ask about information already captured in "Already Known" above — treat it as settled knowledge
+- ${hasRetrievedContext ? 'Generate follow-up questions that CONNECT the user\'s input to existing knowledge (e.g. if the user mentions a building near a known church, ask about the relationship between them — don\'t ask generic questions)' : 'Only ask about things the user is likely to know based on their input'}
 - If they describe personal experience, ask about details of that experience
 - If they share facts, ask about sources or related information
 - Include one question that helps understand the broader topic area — something natural like "Is this something that happens regularly here?" or "Are there others who share this experience?" This helps the system understand if this is a recurring theme.
@@ -105,12 +105,12 @@ Optional fields for this category: ${optionalFields.length > 0 ? optionalFields.
 
 ## Already Known
 ${contextSummary}
-${hasRetrievedContext ? '\nIMPORTANT: Do NOT ask about information that is already captured above. Focus on gaps — what is NOT yet known. If the user shares something already in the knowledge base, acknowledge it briefly and ask about connected, unknown aspects.\n' : ''}
 ${followUpContext}
 Identify what information is missing or incomplete. For each gap, specify the field name, a description of what is missing, and a priority (high for required fields, medium/low for optional).
 
 Rules:
-- Only ask about things the user is likely to know based on their input
+- NEVER ask about information already captured in "Already Known" above — treat it as settled knowledge
+- ${hasRetrievedContext ? 'Generate follow-up questions that CONNECT the user\'s input to existing knowledge (e.g. if the user mentions a building near a known church, ask about the relationship between them — don\'t ask generic questions)' : 'Only ask about things the user is likely to know based on their input'}
 - If the input is already rich and detailed, return fewer or no gaps — don't manufacture questions
 - Rank questions by likelihood the user can answer them, not just by schema field priority
 - Never ask about things that require specialized expertise the user hasn't demonstrated
@@ -124,6 +124,16 @@ Respond with a JSON object containing:
 Example response:
 {"gaps": [{"field": "period", "description": "The exact time period is unclear", "priority": "high"}], "followUpQuestions": ["Can you specify the exact time period?"], "reasoning": "The user mentioned a historical event but did not specify when it occurred."}`;
     }
+
+    log.info(
+      {
+        sessionId: state.sessionId,
+        hasRetrievedContext,
+        relevantContextCount: state.contextDispatcherOutput?.result.relevantContext.length ?? 0,
+        contextSummary,
+      },
+      'Gap reasoning prompt: context injection',
+    );
 
     const result = await invokeAndValidate({
       llmClient,

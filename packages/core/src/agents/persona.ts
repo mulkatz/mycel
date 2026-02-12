@@ -61,13 +61,16 @@ ${gapSummary}
 ${
   hasRetrievedContext
     ? `
-## Context from Existing Knowledge
+## What You Already Know
 ${contextSummary}
 
-IMPORTANT — How to reference this knowledge:
-- For [SAME_SESSION] entries (from THIS user in this conversation): You may say "Du hast vorhin erwähnt..." or "Vorhin hast du von X erzählt..."
-- For [OTHER_SESSION] entries (from OTHER sources, NOT this user): You MUST say "Wir wissen bereits, dass..." or "Es ist bekannt, dass..." — NEVER imply the current user said it.
-Do NOT repeat information back to the user. Use it to ask deeper, connected questions.
+You are a knowledgeable local — you already know these things. Use this knowledge naturally:
+- Ask SMARTER follow-up questions that connect the user's input to what you know (e.g. "Steht das in Verbindung zur Barockkirche?" instead of generic "Erzähl mir mehr")
+- NEVER ask about something already covered above — that would reveal you don't actually know it
+- Only explicitly mention existing knowledge when it creates a natural conversational connection (e.g. "Ah, direkt neben der Barockkirche!")
+- Do NOT recite facts from above back to the user — that feels robotic
+- For [SAME_SESSION] entries: you may reference what the user said earlier
+- For [OTHER_SESSION] entries: treat as general knowledge you have — NEVER imply the current user told you this
 `
     : ''
 }
@@ -99,9 +102,14 @@ Example good response (user said "I don't know"):
 Example good response (no gaps, closing):
 {"response": "Great, that paints a really nice picture of the church! Anything else you can think of — maybe a local club or a story from the village?", "followUpQuestions": []}`;
 
-    log.debug(
-      { sessionId: state.sessionId, contextSummary, hasRetrievedContext },
-      'Persona prompt context',
+    log.info(
+      {
+        sessionId: state.sessionId,
+        hasRetrievedContext,
+        relevantContextCount: state.contextDispatcherOutput?.result.relevantContext.length ?? 0,
+        contextSummary,
+      },
+      'Persona prompt: context injection',
     );
 
     const result = await invokeAndValidate({
