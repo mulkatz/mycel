@@ -18,6 +18,16 @@
 
 set -euo pipefail
 
+# Load .env if present (provides MYCEL_GCP_API_KEY, etc.)
+ENV_FILE="$(cd "$(dirname "$0")/.." && pwd)/.env"
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  source "$ENV_FILE"
+  set +a
+  # E2E runs against live Firestore, not the emulator
+  unset FIRESTORE_EMULATOR_HOST
+fi
+
 SERVICE_URL="${1:-$(gcloud run services describe mycel-api --region=europe-west3 --project=mycel-dev-1348 --format='value(status.url)' 2>/dev/null || echo "")}"
 
 if [ -z "$SERVICE_URL" ]; then
