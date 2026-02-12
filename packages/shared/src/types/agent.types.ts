@@ -18,7 +18,7 @@ export interface AgentOutput {
   readonly agentRole: AgentRole;
   readonly result: Record<string, unknown>;
   readonly confidence: number;
-  readonly reasoning?: string;
+  readonly reasoning?: string | null;
 }
 
 export type ClassifierIntent = 'content' | 'greeting' | 'proactive_request' | 'dont_know';
@@ -30,9 +30,9 @@ export interface ClassifierOutput extends AgentOutput {
     readonly subcategoryId?: string | null;
     readonly confidence: number;
     readonly intent: ClassifierIntent;
-    readonly isTopicChange?: boolean;
-    readonly summary?: string;
-    readonly suggestedCategoryLabel?: string;
+    readonly isTopicChange?: boolean | null;
+    readonly summary?: string | null;
+    readonly suggestedCategoryLabel?: string | null;
   };
 }
 

@@ -23,9 +23,10 @@ Before starting any task from the backlog:
 - [x] RAG foundation (embedding generation, Firestore vector search, Context Dispatcher)
 - [x] Cloud Run deployment (Dockerfile, Artifact Registry push, Terraform Cloud Run module, deploy script, public dev access)
 - [x] Known issues fix (intent-aware pipeline routing, completeness score overhaul, proactive questions, graceful "don't know" handling, Zod validation cleanup)
-- [x] Document Generator (ADR-005: async Markdown documentation from Knowledge Entries — Heimatbuch-style prose, chapter structure, gap hints)
-- [x] Schema Bootstrap via Web Search (ADR-010: DomainBehaviorConfig presets, Google Search grounding via @google/genai, proposal/review workflow, hybrid mode)
-- [x] Schema Evolution + Web Enrichment (ADR-011, ADR-012: pattern detection via clustering, evolution proposals with auto-apply, field stats tracking, async claim verification, search caching, enrichment markers in context/documents)
+- [x] Document Generator (async Markdown documentation from Knowledge Entries — local history book style, chapter structure, gap hints)
+- [x] Dynamic Schema Bootstrap via Web Search — Phase 1 of 3 (DomainBehaviorConfig, web search client with Gemini grounding, schema generator, proposal → review → apply flow)
+- [x] Conversational Schema Evolution — Phase 2 of 3 (pattern detection via embedding clustering, evolution proposals for new categories/fields/priority changes, field stats tracking, auto mode, schema-evolution-log)
+- [x] Real-time Web Enrichment — Phase 3 of 3 (async claim extraction + validation during conversations, 7-day search cache, conflict flagging, enrichment metadata on Knowledge Entries, Context Dispatcher integration with verification markers)
 
 ## In Progress
 
@@ -36,6 +37,12 @@ Before starting any task from the backlog:
 - [ ] Cloud Run hardening (deletion protection, ingress restrictions, Cloud Armor)
 - [ ] Resolve `src → dist` symlink workaround in Dockerfile (refactor to package.json exports or bundler)
 - [ ] Monitoring and observability
+- [ ] Frontend (Chat UI for knowledge contributors, Admin Dashboard for schema management + document browsing)
+
+## Known Limitations
+- [ ] `new_field` evolution proposals: infrastructure ready but not yet auto-triggered (only new_category and change_priority trigger automatically)
+- [ ] Enrichment runs as floating promises in Cloud Run — if instance scales to zero mid-enrichment, the enrichment is lost (not critical, next session retriggers)
+- [ ] No job queue for enrichment — acceptable at current scale, revisit if enrichment volume grows
 
 ## Known Issues (conversation quality, iterative improvement)
 - [x] Completeness score is unreliable (100% for "hi", 0% for actual content)

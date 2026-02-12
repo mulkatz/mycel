@@ -6,10 +6,10 @@ export const ClassifierResultSchema = z.object({
   subcategoryId: z.string().nullable().optional(),
   confidence: z.number().min(0).max(1),
   intent: z.enum(['content', 'greeting', 'proactive_request', 'dont_know']),
-  isTopicChange: z.boolean().optional(),
-  reasoning: z.string().optional(),
-  summary: z.string().optional(),
-  suggestedCategoryLabel: z.string().optional(),
+  isTopicChange: z.boolean().nullable().optional(),
+  reasoning: z.string().nullable().optional(),
+  summary: z.string().nullable().optional(),
+  suggestedCategoryLabel: z.string().nullable().optional(),
 });
 
 export type ClassifierResult = z.infer<typeof ClassifierResultSchema>;
@@ -28,7 +28,7 @@ export const GapReasoningResultSchema = z.object({
     }),
   ),
   followUpQuestions: z.array(z.string()),
-  reasoning: z.string().optional(),
+  reasoning: z.string().nullable().optional(),
 });
 
 export type GapReasoningResult = z.infer<typeof GapReasoningResultSchema>;
