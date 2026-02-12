@@ -1,5 +1,6 @@
 import type { EmbeddingClient } from './embedding-client.js';
 import { EMBEDDING_DIMENSION, DEFAULT_EMBEDDING_MODEL } from './embedding-client.js';
+import { helpers } from '@google-cloud/aiplatform';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { ConfigurationError, LlmError } from '@mycel/shared/src/utils/errors.js';
 
@@ -50,20 +51,25 @@ export function createVertexEmbeddingClient(): EmbeddingClient {
         instances,
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      const predictions: Array<{ values: number[] }> | undefined = response?.predictions;
-      if (!predictions || predictions.length !== texts.length) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const rawPredictions: unknown[] | undefined = response?.predictions;
+      if (!rawPredictions || rawPredictions.length !== texts.length) {
+        log.error({ predictions: rawPredictions }, 'Unexpected embedding response');
         throw new LlmError(
-          `Unexpected embedding response: expected ${String(texts.length)} predictions, got ${String(predictions?.length ?? 0)}`,
+          `Unexpected embedding response: expected ${String(texts.length)} predictions, got ${String(rawPredictions?.length ?? 0)}`,
           false,
         );
       }
 
-      return predictions.map((p) => {
-        const values = p.values;
-        if (values.length !== EMBEDDING_DIMENSION) {
+      return rawPredictions.map((raw) => {
+        const prediction = helpers.fromValue(raw as Parameters<typeof helpers.fromValue>[0]) as {
+          embeddings?: { values?: number[] };
+        };
+        const values = prediction?.embeddings?.values;
+        if (!values || values.length !== EMBEDDING_DIMENSION) {
+          log.error({ prediction }, 'Unexpected embedding structure');
           throw new LlmError(
-            `Unexpected embedding dimension: expected ${String(EMBEDDING_DIMENSION)}, got ${String(values.length)}`,
+            `Unexpected embedding dimension: expected ${String(EMBEDDING_DIMENSION)}, got ${String(values?.length ?? 0)}`,
             false,
           );
         }
