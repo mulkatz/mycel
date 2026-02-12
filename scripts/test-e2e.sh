@@ -129,6 +129,46 @@ else
 fi
 
 # =============================================================================
+section "1b. API Documentation"
+# =============================================================================
+
+# OpenAPI spec — no auth required
+RESPONSE=$(curl -s -w "\n%{http_code}" "$SERVICE_URL/openapi.json" 2>/dev/null)
+STATUS=$(get_status "$RESPONSE")
+BODY=$(get_body "$RESPONSE")
+
+if [ "$STATUS" = "200" ]; then
+  pass "OpenAPI spec returns 200"
+
+  # Validate it's valid JSON with expected fields
+  TITLE=$(echo "$BODY" | jq -r '.info.title // empty' 2>/dev/null || echo "")
+  if [ "$TITLE" = "Mycel API" ]; then
+    pass "OpenAPI spec has correct title"
+  else
+    fail "OpenAPI spec missing or wrong title: $TITLE"
+  fi
+
+  OPENAPI_VER=$(echo "$BODY" | jq -r '.openapi // empty' 2>/dev/null || echo "")
+  if [ "$OPENAPI_VER" = "3.1.0" ]; then
+    pass "OpenAPI version is 3.1.0"
+  else
+    fail "Unexpected OpenAPI version: $OPENAPI_VER"
+  fi
+else
+  fail "OpenAPI spec returned $STATUS"
+fi
+
+# Scalar docs — no auth required
+RESPONSE=$(curl -s -w "\n%{http_code}" "$SERVICE_URL/docs" 2>/dev/null)
+STATUS=$(get_status "$RESPONSE")
+
+if [ "$STATUS" = "200" ]; then
+  pass "Scalar API docs returns 200"
+else
+  fail "Scalar API docs returned $STATUS"
+fi
+
+# =============================================================================
 section "2. Schema Bootstrap via Web Search"
 # =============================================================================
 

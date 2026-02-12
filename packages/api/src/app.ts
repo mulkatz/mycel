@@ -51,6 +51,47 @@ export function createApp(config: AppConfig): OpenAPIHono<AppEnv> {
   // Health — no auth required
   app.route('/health', health);
 
+  // OpenAPI spec — no auth required
+  app.get('/openapi.json', (c) => {
+    const spec = app.getOpenAPI31Document({
+      openapi: '3.1.0',
+      info: {
+        title: 'Mycel API',
+        version: '1.0.0',
+        description: 'AI-powered Universal Knowledge Engine API',
+      },
+      security: [{ Bearer: [] }],
+    });
+    spec.components = {
+      ...spec.components,
+      securitySchemes: {
+        Bearer: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    };
+    return c.json(spec);
+  });
+
+  // Scalar API Reference — no auth required (loads client-side from CDN)
+  app.get('/docs', (c) => {
+    const html = `<!doctype html>
+<html>
+<head>
+  <title>Mycel API Reference</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body>
+  <script id="api-reference" data-url="/openapi.json" data-configuration='${JSON.stringify({ theme: 'kepler' })}'></script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+</body>
+</html>`;
+    return c.html(html);
+  });
+
   // Auth middleware — applies to all routes below
   app.use('*', createAuthMiddleware(config.projectId));
 
