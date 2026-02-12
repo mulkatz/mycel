@@ -48,18 +48,34 @@ const personaConfig: PersonaConfig = {
   systemPromptTemplate: 'You are a test chronicler.',
 };
 
-function createMockLlm(): { client: LlmClient; callArgs: Array<{ systemPrompt: string }> } {
-  const callArgs: Array<{ systemPrompt: string }> = [];
-  const invokeFn = vi.fn().mockImplementation((request: { systemPrompt: string }) => {
+function createMockLlm(): { client: LlmClient; callArgs: Array<{ systemPrompt: string; userMessage: string }> } {
+  const callArgs: Array<{ systemPrompt: string; userMessage: string }> = [];
+  const invokeFn = vi.fn().mockImplementation((request: { systemPrompt: string; userMessage: string }) => {
     callArgs.push(request);
       const prompt = request.systemPrompt.toLowerCase();
       const isFollowUp = prompt.includes('[follow_up_context]');
+      const hasSessionContext = prompt.includes('[session_context]');
+      const userMsg = request.userMessage.toLowerCase();
 
+      // Classifier runs on every turn now
       if (prompt.includes('classifier')) {
+        // Topic change detection for nature-related input
+        if (hasSessionContext && (userMsg.includes('lake') || userMsg.includes('forest'))) {
+          return Promise.resolve({
+            content: JSON.stringify({
+              categoryId: 'nature',
+              confidence: 0.9,
+              isTopicChange: true,
+              reasoning: 'User changed topic to nature.',
+            }),
+          });
+        }
+
         return Promise.resolve({
           content: JSON.stringify({
             categoryId: 'history',
             confidence: 0.9,
+            isTopicChange: false,
             reasoning: 'Historical content',
           }),
         });
@@ -100,7 +116,7 @@ function createMockLlm(): { client: LlmClient; callArgs: Array<{ systemPrompt: s
         if (isFollowUp && prompt.includes('turn 3')) {
           return Promise.resolve({
             content: JSON.stringify({
-              response: 'All complete!',
+              response: 'Super, jetzt haben wir ein richtig gutes Bild!',
               followUpQuestions: [],
             }),
           });
@@ -108,14 +124,14 @@ function createMockLlm(): { client: LlmClient; callArgs: Array<{ systemPrompt: s
         if (isFollowUp) {
           return Promise.resolve({
             content: JSON.stringify({
-              response: 'Thanks! One more question.',
+              response: 'Spannend! Gibt es dazu Quellen?',
               followUpQuestions: ['Do you have sources?'],
             }),
           });
         }
         return Promise.resolve({
           content: JSON.stringify({
-            response: 'Thanks for sharing! Tell me more.',
+            response: '1732, wow! Weißt du aus welcher Zeit genau?',
             followUpQuestions: ['When was this?', 'Do you have sources?'],
           }),
         });
@@ -167,7 +183,7 @@ function createTestManager(): {
   manager: ReturnType<typeof createSessionManager>;
   sessionRepo: SessionRepository;
   knowledgeRepo: KnowledgeRepository;
-  callArgs: Array<{ systemPrompt: string }>;
+  callArgs: Array<{ systemPrompt: string; userMessage: string }>;
 } {
   const sessionRepo = createInMemorySessionRepository();
   const knowledgeRepo = createInMemoryKnowledgeRepository();
@@ -218,7 +234,7 @@ describe('SessionManager', () => {
     expect(turn2.entry?.structuredData).toHaveProperty('period');
   });
 
-  it('should auto-complete when threshold is reached', async () => {
+  it('should report completeness but not auto-close session', async () => {
     const { manager } = createTestManager();
 
     const turn1 = await manager.startSession({
@@ -241,9 +257,40 @@ describe('SessionManager', () => {
     expect(turn3.isComplete).toBe(true);
     expect(turn3.entry?.structuredData).toHaveProperty('period');
     expect(turn3.entry?.structuredData).toHaveProperty('sources');
+
+    // Session should still be active — user controls when to stop
+    const session = await manager.getSession(turn3.sessionId);
+    expect(session.status).toBe('active');
   });
 
-  it('should reuse turn-1 classification on follow-up', async () => {
+  it('should allow more turns than maxTurns without error', async () => {
+    const { manager } = createTestManager();
+
+    const turn1 = await manager.startSession({
+      content: 'The old church was built in 1732.',
+      isFollowUpResponse: false,
+    });
+
+    const turn2 = await manager.continueSession(turn1.sessionId, {
+      content: '18th century.',
+      isFollowUpResponse: true,
+    });
+
+    const turn3 = await manager.continueSession(turn2.sessionId, {
+      content: 'Church records from 1740.',
+      isFollowUpResponse: true,
+    });
+
+    // Turn 4 — beyond maxTurns (3), should NOT throw
+    const turn4 = await manager.continueSession(turn3.sessionId, {
+      content: 'The architect was Johann Schmidt.',
+      isFollowUpResponse: true,
+    });
+
+    expect(turn4.turnNumber).toBe(4);
+  });
+
+  it('should run classifier on every turn including follow-ups', async () => {
     const { manager, callArgs } = createTestManager();
 
     const turn1 = await manager.startSession({
@@ -264,8 +311,8 @@ describe('SessionManager', () => {
       (arg) => arg.systemPrompt.toLowerCase().includes('classifier'),
     ).length;
 
-    // Classifier should not be called again on follow-up
-    expect(classifierCallsAfter).toBe(classifierCallsBefore);
+    // Classifier should be called again on follow-up
+    expect(classifierCallsAfter).toBe(classifierCallsBefore + 1);
   });
 
   it('should accumulate turns across the session', async () => {
@@ -288,33 +335,6 @@ describe('SessionManager', () => {
     // Turn 1 should have questions
     const turn1Questions = session?.turns[0].pipelineResult.personaOutput?.result.followUpQuestions ?? [];
     expect(turn1Questions.length).toBeGreaterThan(0);
-  });
-
-  it('should enforce max turns', async () => {
-    const { manager } = createTestManager();
-
-    const turn1 = await manager.startSession({
-      content: 'The old church was built in 1732.',
-      isFollowUpResponse: false,
-    });
-
-    const turn2 = await manager.continueSession(turn1.sessionId, {
-      content: '18th century.',
-      isFollowUpResponse: true,
-    });
-
-    const turn3 = await manager.continueSession(turn2.sessionId, {
-      content: 'Church records from 1740.',
-      isFollowUpResponse: true,
-    });
-
-    // Turn 3 auto-completes, so continuing should fail (session is complete)
-    await expect(
-      manager.continueSession(turn3.sessionId, {
-        content: 'More info.',
-        isFollowUpResponse: true,
-      }),
-    ).rejects.toThrow('already complete');
   });
 
   it('should throw when continuing a nonexistent session', async () => {
@@ -390,5 +410,27 @@ describe('SessionManager', () => {
     expect(entries[0].categoryId).toBe('history');
     expect(entries[0].sessionId).toBe(turn1.sessionId);
     expect(entries[0].status).toBe('draft');
+  });
+
+  it('should detect topic change and update classifierResult', async () => {
+    const { manager, sessionRepo } = createTestManager();
+
+    const turn1 = await manager.startSession({
+      content: 'The old church was built in 1732.',
+      isFollowUpResponse: false,
+    });
+
+    // Verify initial classification
+    const sessionBefore = await sessionRepo.getSessionWithTurns(turn1.sessionId);
+    expect(sessionBefore?.classifierResult?.result.categoryId).toBe('history');
+
+    // Send a message about a lake — should trigger topic change
+    await manager.continueSession(turn1.sessionId, {
+      content: 'We also have a beautiful lake nearby.',
+      isFollowUpResponse: true,
+    });
+
+    const sessionAfter = await sessionRepo.getSessionWithTurns(turn1.sessionId);
+    expect(sessionAfter?.classifierResult?.result.categoryId).toBe('nature');
   });
 });

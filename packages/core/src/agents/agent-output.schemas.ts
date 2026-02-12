@@ -5,6 +5,7 @@ export const ClassifierResultSchema = z.object({
   categoryId: z.string(),
   subcategoryId: z.string().nullable().optional(),
   confidence: z.number().min(0).max(1),
+  isTopicChange: z.boolean().optional(),
   reasoning: z.string().optional(),
   summary: z.string().optional(),
   suggestedCategoryLabel: z.string().optional(),

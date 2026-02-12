@@ -15,6 +15,11 @@ const domainConfig: DomainConfig = {
       description: 'Historical events',
       requiredFields: ['period', 'sources'],
     },
+    {
+      id: 'nature',
+      label: 'Nature',
+      description: 'Natural environment',
+    },
   ],
   ingestion: {
     allowedModalities: ['text'],
@@ -48,6 +53,7 @@ function createMockState(): PipelineGraphState {
     personaOutput: undefined,
     structuringOutput: undefined,
     turnContext: undefined,
+    activeCategory: undefined,
   };
 }
 
@@ -83,6 +89,7 @@ function createUncategorizedState(): PipelineGraphState {
     personaOutput: undefined,
     structuringOutput: undefined,
     turnContext: undefined,
+    activeCategory: undefined,
   };
 }
 
@@ -231,5 +238,72 @@ describe('createStructuringNode', () => {
     expect(prompt).toContain('suggestedCategoryLabel');
     expect(prompt).toContain('topicKeywords');
     expect(prompt).not.toContain('Required fields');
+  });
+
+  it('should create a fresh entry on topic change instead of merging', async () => {
+    const mockLlm: LlmClient = {
+      invoke: vi.fn().mockResolvedValue({
+        content: JSON.stringify({
+          title: 'Beautiful Lake',
+          content: 'There is a beautiful lake nearby.',
+          structuredData: {},
+          tags: ['nature', 'lake'],
+          isComplete: true,
+          missingFields: [],
+        }),
+      }),
+    };
+
+    const node = createStructuringNode(domainConfig, mockLlm);
+    const topicChangeState: PipelineGraphState = {
+      ...createMockState(),
+      input: {
+        sessionId: 'test-session',
+        content: 'We also have a beautiful lake nearby',
+        metadata: {},
+      },
+      classifierOutput: {
+        agentRole: 'classifier',
+        result: { categoryId: 'nature', confidence: 0.85, isTopicChange: true },
+        confidence: 0.85,
+      },
+      turnContext: {
+        turnNumber: 2,
+        isFollowUp: true,
+        previousTurns: [],
+        previousEntry: {
+          id: 'old-entry-id',
+          categoryId: 'history',
+          title: 'Historic Church',
+          content: 'The old church was built in 1732.',
+          source: { type: 'text' },
+          structuredData: { year: 1732 },
+          tags: ['history'],
+          metadata: {},
+          createdAt: new Date('2024-01-01'),
+          updatedAt: new Date('2024-01-01'),
+        },
+        askedQuestions: ['When was this?'],
+      },
+      activeCategory: 'history',
+    };
+
+    const result = await node(topicChangeState);
+
+    if (!result.structuringOutput) throw new Error('Expected structuringOutput');
+    const { entry } = result.structuringOutput.result;
+
+    // Should have a new ID, not reuse the old entry's ID
+    expect(entry.id).not.toBe('old-entry-id');
+    expect(entry.categoryId).toBe('nature');
+    expect(entry.title).toBe('Beautiful Lake');
+
+    // Should NOT include merge instructions in the prompt
+    const calls = (mockLlm.invoke as ReturnType<typeof vi.fn>).mock.calls as Array<
+      [{ systemPrompt: string }]
+    >;
+    const prompt = calls[0][0].systemPrompt;
+    expect(prompt).not.toContain('FOLLOW_UP_CONTEXT');
+    expect(prompt).not.toContain('Merge new information');
   });
 });

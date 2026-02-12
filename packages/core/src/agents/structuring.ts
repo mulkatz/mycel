@@ -27,12 +27,14 @@ export function createStructuringNode(
 
     const isUncategorized = categoryId === UNCATEGORIZED;
 
+    const isTopicChange = state.classifierOutput?.result.isTopicChange === true;
+
     const gapInfo = state.gapReasoningOutput
       ? `Identified gaps: ${state.gapReasoningOutput.result.gaps.map((g) => g.field).join(', ') || 'none'}`
       : 'No gap analysis available.';
 
     let followUpContext = '';
-    if (state.turnContext?.isFollowUp && state.turnContext.previousEntry) {
+    if (state.turnContext?.isFollowUp && state.turnContext.previousEntry && !isTopicChange) {
       const existing = state.turnContext.previousEntry;
       followUpContext = `
 [FOLLOW_UP_CONTEXT]
@@ -115,7 +117,7 @@ Example response:
     });
 
     const now = new Date();
-    const previousEntry = state.turnContext?.previousEntry;
+    const previousEntry = isTopicChange ? undefined : state.turnContext?.previousEntry;
 
     const gaps = state.gapReasoningOutput?.result.gaps ?? [];
     const followUpQuestions = state.gapReasoningOutput?.result.followUpQuestions ?? [];

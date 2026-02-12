@@ -46,6 +46,7 @@ function createMockState(): PipelineGraphState {
     personaOutput: undefined,
     structuringOutput: undefined,
     turnContext: undefined,
+    activeCategory: undefined,
   };
 }
 
@@ -76,6 +77,7 @@ function createUncategorizedState(): PipelineGraphState {
     personaOutput: undefined,
     structuringOutput: undefined,
     turnContext: undefined,
+    activeCategory: undefined,
   };
 }
 

@@ -53,6 +53,7 @@ function createMockLlm(): { client: LlmClient; callCount: () => number } {
           content: JSON.stringify({
             categoryId: 'history',
             confidence: 0.9,
+            isTopicChange: false,
             reasoning: 'Historical content',
           }),
         };
@@ -71,7 +72,7 @@ function createMockLlm(): { client: LlmClient; callCount: () => number } {
       if (prompt.includes('persona')) {
         return {
           content: JSON.stringify({
-            response: 'Thanks for sharing! Tell me more.',
+            response: '1732, wow! When was this exactly?',
             followUpQuestions: ['When did this happen?'],
           }),
         };
@@ -128,7 +129,7 @@ function createUncategorizedMockLlm(): { client: LlmClient; callCount: () => num
       if (prompt.includes('your persona')) {
         return {
           content: JSON.stringify({
-            response: 'What a lovely memory! I would love to hear more about it.',
+            response: 'What lovely memories! When did this happen?',
             followUpQuestions: ['When did this happen?', 'Where exactly was this?'],
           }),
         };
@@ -155,6 +156,7 @@ function createUncategorizedMockLlm(): { client: LlmClient; callCount: () => num
           content: JSON.stringify({
             categoryId: '_uncategorized',
             confidence: 0.3,
+            isTopicChange: false,
             reasoning: 'Does not fit existing categories.',
             summary: 'Personal childhood memory about summers',
             suggestedCategoryLabel: 'Childhood Memories',
@@ -264,5 +266,32 @@ describe('createPipeline', () => {
     expect(entry?.structuredData).toHaveProperty('suggestedCategoryLabel');
     expect(entry?.structuredData).toHaveProperty('topicKeywords');
     expect(entry?.id).toBeTruthy();
+  });
+
+  it('should pass activeCategory through to pipeline state', async () => {
+    const { client } = createMockLlm();
+    const pipeline = createPipeline({
+      domainConfig,
+      personaConfig,
+      llmClient: client,
+    });
+
+    const input: AgentInput = {
+      sessionId: 'active-category-test',
+      content: 'More details about the church.',
+      metadata: {},
+    };
+
+    const result = await pipeline.run(input, {
+      activeCategory: 'history',
+      turnContext: {
+        turnNumber: 2,
+        isFollowUp: true,
+        previousTurns: [],
+        askedQuestions: ['When was this?'],
+      },
+    });
+
+    expect(result.activeCategory).toBe('history');
   });
 });

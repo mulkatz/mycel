@@ -1,7 +1,6 @@
 import { StateGraph, START, END } from '@langchain/langgraph';
 import type {
   AgentInput,
-  ClassifierOutput,
   PipelineState,
 } from '@mycel/shared/src/types/agent.types.js';
 import type { TurnContext } from '@mycel/shared/src/types/session.types.js';
@@ -26,7 +25,7 @@ export interface PipelineConfig {
 
 export interface PipelineRunOptions {
   readonly turnContext?: TurnContext;
-  readonly classifierOutput?: ClassifierOutput;
+  readonly activeCategory?: string;
 }
 
 export interface Pipeline {
@@ -69,12 +68,13 @@ export function createPipeline(config: PipelineConfig): Pipeline {
       const result = await graph.invoke({
         sessionId: input.sessionId,
         input,
-        classifierOutput: options?.classifierOutput,
+        classifierOutput: undefined,
         contextDispatcherOutput: undefined,
         gapReasoningOutput: undefined,
         personaOutput: undefined,
         structuringOutput: undefined,
         turnContext: options?.turnContext,
+        activeCategory: options?.activeCategory,
       });
 
       log.info({ sessionId: input.sessionId }, 'Pipeline complete');
@@ -88,6 +88,7 @@ export function createPipeline(config: PipelineConfig): Pipeline {
         personaOutput: result.personaOutput,
         structuringOutput: result.structuringOutput,
         turnContext: result.turnContext,
+        activeCategory: result.activeCategory,
       };
     },
   };

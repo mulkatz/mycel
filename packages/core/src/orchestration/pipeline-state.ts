@@ -18,6 +18,7 @@ export const PipelineGraphAnnotation = Annotation.Root({
   personaOutput: Annotation<PersonaOutput | undefined>,
   structuringOutput: Annotation<StructuringOutput | undefined>,
   turnContext: Annotation<TurnContext | undefined>,
+  activeCategory: Annotation<string | undefined>,
 });
 
 export type PipelineGraphState = typeof PipelineGraphAnnotation.State;

@@ -12,6 +12,8 @@ import type { SessionRepository } from '@mycel/core/src/repositories/session.rep
 import type { KnowledgeRepository } from '@mycel/core/src/repositories/knowledge.repository.js';
 import type { SessionResponse } from '@mycel/shared/src/types/session.types.js';
 
+const EXIT_KEYWORDS = ['done', 'fertig', 'tschüss', 'tschuss', 'exit', 'quit'];
+
 function createRepositories(): {
   sessionRepository: SessionRepository;
   knowledgeRepository: KnowledgeRepository;
@@ -54,7 +56,7 @@ function renderResponse(response: SessionResponse): void {
   }
 
   if (response.isComplete) {
-    console.log('\n=== Knowledge entry is COMPLETE ===');
+    console.log('\n--- Knowledge entry looks complete! Feel free to continue or type "done" to finish. ---');
   }
 }
 
@@ -77,6 +79,10 @@ function renderFinalEntry(response: SessionResponse): void {
   }
 }
 
+function isExitCommand(input: string): boolean {
+  return EXIT_KEYWORDS.includes(input.trim().toLowerCase());
+}
+
 async function main(): Promise<void> {
   const configDir = process.argv[2] ?? resolve(process.cwd(), 'config');
 
@@ -86,7 +92,7 @@ async function main(): Promise<void> {
   console.log(`Config directory: ${configDir}`);
   console.log(`Mock LLM: ${process.env['MYCEL_MOCK_LLM'] === 'true' ? 'yes' : 'no'}`);
   console.log(`Persistence: ${persistenceMode}`);
-  console.log('Type "done" or press Ctrl+C to end the session.\n');
+  console.log('Type "done", "fertig", or "tschüss" to end the session. Press Ctrl+C to quit.\n');
 
   const config = await loadConfig(configDir);
   const llmClient = await createLlmClient();
@@ -116,7 +122,7 @@ async function main(): Promise<void> {
 
   try {
     const firstInput = await prompt('You: ');
-    if (firstInput.trim().toLowerCase() === 'done' || firstInput.trim() === '') {
+    if (isExitCommand(firstInput) || firstInput.trim() === '') {
       console.log('Session ended.');
       rl.close();
       return;
@@ -134,9 +140,9 @@ async function main(): Promise<void> {
     lastResponse = response;
     renderResponse(response);
 
-    while (!response.isComplete) {
+    for (;;) {
       const input = await prompt('\nYou: ');
-      if (input.trim().toLowerCase() === 'done') {
+      if (isExitCommand(input)) {
         break;
       }
 
@@ -148,10 +154,6 @@ async function main(): Promise<void> {
 
       lastResponse = followUp;
       renderResponse(followUp);
-
-      if (followUp.isComplete) {
-        break;
-      }
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ERR_USE_AFTER_CLOSE') {

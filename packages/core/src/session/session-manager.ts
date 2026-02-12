@@ -55,7 +55,6 @@ function buildSessionResponse(
   result: PipelineState,
   completenessScore: number,
   turnNumber: number,
-  threshold: number,
 ): SessionResponse {
   const entry = result.structuringOutput?.result.entry;
   const isComplete = result.structuringOutput?.result.isComplete ?? false;
@@ -67,7 +66,7 @@ function buildSessionResponse(
     entry,
     personaResponse,
     followUpQuestions,
-    isComplete: isComplete || completenessScore >= threshold,
+    isComplete: isComplete || completenessScore >= 1.0,
     completenessScore,
     turnNumber,
   };
@@ -116,8 +115,6 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
   const sessionRepo = config.sessionRepository;
   const knowledgeRepo = config.knowledgeRepository;
   const domainConfig = config.pipelineConfig.domainConfig;
-  const threshold = domainConfig.completeness?.autoCompleteThreshold ?? 0.8;
-  const maxTurns = domainConfig.completeness?.maxTurns ?? 5;
 
   return {
     async startSession(input: TurnInput, metadata?: SessionMetadata): Promise<SessionResponse> {
@@ -138,7 +135,6 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
       const result = await pipeline.run(agentInput);
       const entry = result.structuringOutput?.result.entry;
       const completenessScore = entry ? calculateCompleteness(entry, domainConfig) : 0;
-      const status = completenessScore >= threshold ? 'complete' as const : 'active' as const;
 
       const turn = await sessionRepo.addTurn(session.id, {
         turnNumber: 1,
@@ -147,7 +143,7 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
       });
 
       await sessionRepo.update(session.id, {
-        status,
+        status: 'active',
         currentEntry: entry,
         classifierResult: result.classifierOutput,
       });
@@ -159,7 +155,7 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
         'Session started',
       );
 
-      return buildSessionResponse(session.id, result, completenessScore, 1, threshold);
+      return buildSessionResponse(session.id, result, completenessScore, 1);
     },
 
     async continueSession(sessionId: string, input: TurnInput): Promise<SessionResponse> {
@@ -172,11 +168,6 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
       }
 
       const turnNumber = session.turns.length + 1;
-      if (turnNumber > maxTurns) {
-        throw new SessionError(
-          `Maximum turns (${String(maxTurns)}) reached for session: ${sessionId}`,
-        );
-      }
 
       log.info({ sessionId, turnNumber }, 'Continuing session');
 
@@ -200,14 +191,28 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
         metadata: { source: 'session' },
       };
 
+      const activeCategory = session.classifierResult?.result.categoryId;
+
       const result = await pipeline.run(agentInput, {
         turnContext,
-        classifierOutput: session.classifierResult,
+        activeCategory,
       });
+
+      const isTopicChange = result.classifierOutput?.result.isTopicChange === true;
+
+      if (isTopicChange) {
+        log.info(
+          {
+            sessionId,
+            oldCategory: activeCategory,
+            newCategory: result.classifierOutput.result.categoryId,
+          },
+          'Topic change detected',
+        );
+      }
 
       const entry = result.structuringOutput?.result.entry;
       const completenessScore = entry ? calculateCompleteness(entry, domainConfig) : 0;
-      const isAutoComplete = completenessScore >= threshold;
 
       const turn = await sessionRepo.addTurn(sessionId, {
         turnNumber,
@@ -216,18 +221,19 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
       });
 
       await sessionRepo.update(sessionId, {
-        status: isAutoComplete ? 'complete' : 'active',
-        currentEntry: entry ?? session.currentEntry,
+        status: 'active',
+        currentEntry: isTopicChange ? entry : (entry ?? session.currentEntry),
+        classifierResult: isTopicChange ? result.classifierOutput : (session.classifierResult ?? result.classifierOutput),
       });
 
       await persistKnowledgeEntry(knowledgeRepo, result, sessionId, turn.id ?? '', input.content);
 
       log.info(
-        { sessionId, completenessScore, turnNumber, isAutoComplete },
+        { sessionId, completenessScore, turnNumber, isTopicChange },
         'Session continued',
       );
 
-      return buildSessionResponse(sessionId, result, completenessScore, turnNumber, threshold);
+      return buildSessionResponse(sessionId, result, completenessScore, turnNumber);
     },
 
     async endSession(sessionId: string): Promise<Session> {

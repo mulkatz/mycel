@@ -27,6 +27,7 @@ export interface ClassifierOutput extends AgentOutput {
     readonly categoryId: string;
     readonly subcategoryId?: string | null;
     readonly confidence: number;
+    readonly isTopicChange?: boolean;
     readonly summary?: string;
     readonly suggestedCategoryLabel?: string;
   };
@@ -80,4 +81,5 @@ export interface PipelineState {
   readonly personaOutput?: PersonaOutput;
   readonly structuringOutput?: StructuringOutput;
   readonly turnContext?: TurnContext;
+  readonly activeCategory?: string;
 }

@@ -86,11 +86,12 @@ describe('createLlmClient', () => {
   });
 
   describe('vertex mode', () => {
-    it('should throw ConfigurationError when GCP_PROJECT_ID is missing', async () => {
+    it('should throw ConfigurationError when MYCEL_GCP_PROJECT_ID is missing', async () => {
       delete process.env['MYCEL_MOCK_LLM'];
       delete process.env['GCP_PROJECT_ID'];
+      delete process.env['MYCEL_GCP_PROJECT_ID'];
 
-      await expect(createLlmClient()).rejects.toThrow('GCP_PROJECT_ID');
+      await expect(createLlmClient()).rejects.toThrow('MYCEL_GCP_PROJECT_ID');
     });
   });
 });

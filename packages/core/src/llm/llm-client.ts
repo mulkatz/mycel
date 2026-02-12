@@ -106,13 +106,13 @@ function createMockResponse(systemPrompt: string, userMessage: string): string {
   if (prompt.includes('your persona')) {
     if (isFollowUp && turnNumber >= 3) {
       return JSON.stringify({
-        response: 'Wonderful, thank you! I now have all the information I need.',
+        response: 'Super, jetzt haben wir ein richtig gutes Bild! Fällt dir noch was anderes ein?',
         followUpQuestions: [],
       });
     }
     if (isFollowUp) {
       return JSON.stringify({
-        response: 'Thank you for the details! Just one more thing I would like to know.',
+        response: 'Spannend! Gibt es dazu vielleicht schriftliche Quellen oder Aufzeichnungen?',
         followUpQuestions: [
           'Do you have any written sources or references for this?',
         ],
@@ -120,7 +120,7 @@ function createMockResponse(systemPrompt: string, userMessage: string): string {
     }
     return JSON.stringify({
       response:
-        'Thank you for sharing this knowledge! I have a few questions to fill in some gaps.',
+        '1732, Barockstil — das ist ja wirklich alt! Weißt du, aus welcher Zeit genau das stammt?',
       followUpQuestions: [
         'Can you tell me more about the time period?',
         'Do you know of any written sources about this?',
@@ -190,17 +190,34 @@ function createMockResponse(systemPrompt: string, userMessage: string): string {
 
   if (prompt.includes('classifier') || prompt.includes('classification')) {
     const input = userMessage.toLowerCase();
+    const hasSessionContext = prompt.includes('[session_context]');
     const looksHistorical =
       input.includes('church') ||
       input.includes('built') ||
       input.includes('century') ||
       input.includes('historical');
+    const looksNature =
+      input.includes('lake') ||
+      input.includes('see') ||
+      input.includes('forest') ||
+      input.includes('tree');
+
+    if (looksNature && hasSessionContext) {
+      return JSON.stringify({
+        categoryId: 'nature',
+        subcategoryId: undefined,
+        confidence: 0.85,
+        isTopicChange: true,
+        reasoning: 'The user changed from a different topic to discussing nature.',
+      });
+    }
 
     if (looksHistorical) {
       return JSON.stringify({
         categoryId: 'history',
         subcategoryId: undefined,
         confidence: 0.85,
+        isTopicChange: false,
         reasoning: 'The input references historical events and time periods.',
       });
     }
@@ -208,6 +225,7 @@ function createMockResponse(systemPrompt: string, userMessage: string): string {
     return JSON.stringify({
       categoryId: '_uncategorized',
       confidence: 0.3,
+      isTopicChange: false,
       reasoning: 'The input does not clearly fit any existing category.',
       summary: 'A personal account or observation shared by a community member.',
       suggestedCategoryLabel: 'Personal Memories',
@@ -270,12 +288,12 @@ function computeBackoffMs(attempt: number): number {
 }
 
 async function createVertexClient(): Promise<LlmClient> {
-  const projectId = process.env['GCP_PROJECT_ID'];
+  const projectId = process.env['MYCEL_GCP_PROJECT_ID'] ?? process.env['GCP_PROJECT_ID'];
   const location = process.env['VERTEX_AI_LOCATION'] ?? 'europe-west1';
 
   if (!projectId) {
     throw new ConfigurationError(
-      'GCP_PROJECT_ID environment variable is required for Vertex AI LLM client',
+      'MYCEL_GCP_PROJECT_ID environment variable is required for Vertex AI LLM client',
     );
   }
 
