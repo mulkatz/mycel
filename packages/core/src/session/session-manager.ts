@@ -13,6 +13,8 @@ import type {
   KnowledgeRepository,
   CreateKnowledgeEntryInput,
 } from '../repositories/knowledge.repository.js';
+import type { FieldStatsRepository } from '../repositories/field-stats.repository.js';
+import type { EnrichmentOrchestrator } from '../services/enrichment/types.js';
 import type { EmbeddingClient } from '../embedding/embedding-client.js';
 import { buildEmbeddingText } from '../embedding/embedding-text-builder.js';
 import { DEFAULT_EMBEDDING_MODEL } from '../embedding/embedding-client.js';
@@ -29,6 +31,8 @@ export interface SessionManagerConfig {
   readonly sessionRepository: SessionRepository;
   readonly knowledgeRepository?: KnowledgeRepository;
   readonly embeddingClient?: EmbeddingClient;
+  readonly fieldStatsRepository?: FieldStatsRepository;
+  readonly enrichmentOrchestrator?: EnrichmentOrchestrator;
 }
 
 export interface InitSessionResult {
@@ -166,15 +170,47 @@ async function persistKnowledgeEntry(
   await knowledgeRepo.create(input);
 }
 
+async function trackFieldStats(
+  fieldStatsRepo: FieldStatsRepository | undefined,
+  domainSchemaId: string,
+  result: PipelineState,
+  sessionId: string,
+): Promise<void> {
+  if (!fieldStatsRepo) return;
+
+  try {
+    const gaps = result.gapReasoningOutput?.result.gaps ?? [];
+    const answered = result.structuringOutput?.result.entry
+      ? Object.keys(result.structuringOutput.result.entry.structuredData)
+      : [];
+    const categoryId = result.classifierOutput?.result.categoryId ?? '_uncategorized';
+
+    for (const gap of gaps) {
+      await fieldStatsRepo.incrementAsked(domainSchemaId, categoryId, gap.field);
+    }
+    for (const field of answered) {
+      await fieldStatsRepo.incrementAnswered(domainSchemaId, categoryId, field);
+    }
+  } catch (error) {
+    log.warn(
+      { error: error instanceof Error ? error.message : String(error), sessionId },
+      'Field stats tracking failed',
+    );
+  }
+}
+
 export function createSessionManager(config: SessionManagerConfig): SessionManager {
   const pipelineConfig: PipelineConfig = {
     ...config.pipelineConfig,
     embeddingClient: config.embeddingClient ?? config.pipelineConfig.embeddingClient,
     knowledgeRepository: config.knowledgeRepository ?? config.pipelineConfig.knowledgeRepository,
+    fieldStatsRepository: config.fieldStatsRepository,
   };
   const pipeline: Pipeline = createPipeline(pipelineConfig);
   const sessionRepo = config.sessionRepository;
   const knowledgeRepo = config.knowledgeRepository;
+  const fieldStatsRepo = config.fieldStatsRepository;
+  const enrichmentOrchestrator = config.enrichmentOrchestrator;
   const embeddingClient = config.embeddingClient ?? config.pipelineConfig.embeddingClient;
   const domainConfig = config.pipelineConfig.domainConfig;
 
@@ -239,6 +275,22 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
         turn.id ?? '',
         input.content,
       );
+
+      await trackFieldStats(fieldStatsRepo, domainConfig.name, result, session.id);
+
+      if (enrichmentOrchestrator && entry) {
+        void enrichmentOrchestrator.enrichAsync({
+          userInput: input.content,
+          entryId: entry.id,
+          categoryId: entry.categoryId,
+          domainSchemaId: domainConfig.name,
+        }).catch((error: unknown) => {
+          log.warn(
+            { error: error instanceof Error ? error.message : String(error), sessionId: session.id },
+            'Background enrichment failed',
+          );
+        });
+      }
 
       log.info({ sessionId: session.id, completenessScore, turnNumber: 1 }, 'Session started');
 
@@ -335,6 +387,22 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
           turn.id ?? '',
           input.content,
         );
+      }
+
+      await trackFieldStats(fieldStatsRepo, domainConfig.name, result, sessionId);
+
+      if (enrichmentOrchestrator && entry) {
+        void enrichmentOrchestrator.enrichAsync({
+          userInput: input.content,
+          entryId: entry.id,
+          categoryId: entry.categoryId,
+          domainSchemaId: domainConfig.name,
+        }).catch((error: unknown) => {
+          log.warn(
+            { error: error instanceof Error ? error.message : String(error), sessionId },
+            'Background enrichment failed',
+          );
+        });
       }
 
       log.info({ sessionId, completenessScore, turnNumber, isTopicChange }, 'Session continued');

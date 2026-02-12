@@ -18,12 +18,15 @@ export function createInMemorySchemaRepository(): SchemaRepository {
     },
 
     getDomainSchemaByName(name: string): Promise<PersistedDomainSchema | null> {
+      let found: PersistedDomainSchema | null = null;
       for (const schema of domainSchemas.values()) {
         if (schema.name === name) {
-          return Promise.resolve(schema);
+          if (!found || schema.isActive) {
+            found = schema;
+          }
         }
       }
-      return Promise.resolve(null);
+      return Promise.resolve(found);
     },
 
     getActiveDomainSchema(): Promise<PersistedDomainSchema | null> {
@@ -38,7 +41,7 @@ export function createInMemorySchemaRepository(): SchemaRepository {
     saveDomainSchema(input: CreateDomainSchemaInput): Promise<PersistedDomainSchema> {
       if (input.isActive) {
         for (const [id, schema] of domainSchemas) {
-          if (schema.isActive) {
+          if (schema.isActive && schema.name === input.name) {
             domainSchemas.set(id, { ...schema, isActive: false, updatedAt: new Date() });
           }
         }

@@ -1,3 +1,5 @@
+import type { KnowledgeEnrichment } from './enrichment.types.js';
+
 export type KnowledgeEntryStatus = 'draft' | 'confirmed' | 'migrated';
 
 export interface KnowledgeEntry {
@@ -30,6 +32,9 @@ export interface KnowledgeEntry {
   readonly embedding?: readonly number[];
   readonly embeddingModel?: string;
   readonly embeddingGeneratedAt?: Date;
+
+  // Enrichment data (web search verification)
+  readonly enrichment?: KnowledgeEnrichment;
 }
 
 export interface KnowledgeFollowUp {

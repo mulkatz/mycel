@@ -11,7 +11,12 @@ import { createDocumentGenerator } from '@mycel/core/src/services/document-gener
 import { createWebSearchClient } from '@mycel/core/src/services/web-search/web-search-client.js';
 import { createMockWebSearchClient } from '@mycel/core/src/services/web-search/mock-web-search-client.js';
 import { createFirestoreSchemaProposalRepository } from '@mycel/core/src/infrastructure/firestore-schema-proposal.repository.js';
+import { createFirestoreEvolutionProposalRepository } from '@mycel/core/src/infrastructure/firestore-evolution-proposal.repository.js';
+import { createFirestoreFieldStatsRepository } from '@mycel/core/src/infrastructure/firestore-field-stats.repository.js';
 import { createSchemaGenerator } from '@mycel/core/src/services/schema-generator/schema-generator.js';
+import { createSchemaEvolutionService } from '@mycel/core/src/services/schema-evolution/schema-evolution.js';
+import { createFirestoreSearchCacheRepository } from '@mycel/core/src/infrastructure/firestore-search-cache.repository.js';
+import { createEnrichmentOrchestrator } from '@mycel/core/src/services/enrichment/enrichment-orchestrator.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { createApp } from './app.js';
 
@@ -47,6 +52,8 @@ async function main(): Promise<void> {
       : createWebSearchClient({ projectId, location: aiLocation });
 
   const proposalRepository = createFirestoreSchemaProposalRepository(db);
+  const evolutionProposalRepository = createFirestoreEvolutionProposalRepository(db);
+  const fieldStatsRepository = createFirestoreFieldStatsRepository(db);
 
   const schemaGenerator = createSchemaGenerator({
     llmClient,
@@ -54,6 +61,34 @@ async function main(): Promise<void> {
     proposalRepository,
     schemaRepository,
   });
+
+  const schemaEvolutionService = createSchemaEvolutionService(
+    {
+      knowledgeRepository,
+      schemaRepository,
+      proposalRepository: evolutionProposalRepository,
+      fieldStatsRepository,
+      llmClient,
+    },
+    { firestoreClient: db },
+  );
+
+  const searchCacheRepository = createFirestoreSearchCacheRepository(db);
+
+  const enrichmentOrchestrator = createEnrichmentOrchestrator(
+    {
+      llmClient,
+      webSearchClient,
+      knowledgeRepository,
+      searchCacheRepository,
+    },
+    {
+      maxSearchesPerTurn: 3,
+      domainSchemaId: '',
+      webSearchMode: 'enrichment',
+      validationMode: 'flag_conflicts',
+    },
+  );
 
   const app = createApp({
     sessionRepository: createFirestoreSessionRepository(db),
@@ -63,6 +98,9 @@ async function main(): Promise<void> {
     embeddingClient,
     documentGenerator,
     schemaGenerator,
+    schemaEvolutionService,
+    fieldStatsRepository,
+    enrichmentOrchestrator,
   });
 
   log.info({ port }, 'Starting Mycel API server');

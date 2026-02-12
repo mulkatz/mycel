@@ -7,6 +7,9 @@ import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
 import type { EmbeddingClient } from '@mycel/core/src/embedding/embedding-client.js';
 import type { DocumentGenerator } from '@mycel/core/src/services/document-generator/types.js';
 import type { SchemaGenerator } from '@mycel/core/src/services/schema-generator/types.js';
+import type { SchemaEvolutionService } from '@mycel/core/src/services/schema-evolution/types.js';
+import type { FieldStatsRepository } from '@mycel/core/src/repositories/field-stats.repository.js';
+import type { EnrichmentOrchestrator } from '@mycel/core/src/services/enrichment/types.js';
 import type { AppEnv } from './types.js';
 import { requestId } from './middleware/request-id.js';
 import { errorHandler } from './middleware/error-handler.js';
@@ -14,6 +17,8 @@ import { health } from './routes/health.js';
 import { createSessionRoutes } from './routes/sessions.js';
 import { createDocumentRoutes } from './routes/documents.js';
 import { createSchemaGeneratorRoutes } from './routes/schema-generator.js';
+import { createEvolutionRoutes } from './routes/evolution.js';
+import { createEntryRoutes } from './routes/entries.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 
 const log = createChildLogger('api:server');
@@ -26,6 +31,9 @@ export interface AppDependencies {
   readonly embeddingClient?: EmbeddingClient;
   readonly documentGenerator?: DocumentGenerator;
   readonly schemaGenerator?: SchemaGenerator;
+  readonly schemaEvolutionService?: SchemaEvolutionService;
+  readonly fieldStatsRepository?: FieldStatsRepository;
+  readonly enrichmentOrchestrator?: EnrichmentOrchestrator;
 }
 
 export function createApp(deps: AppDependencies): Hono<AppEnv> {
@@ -68,6 +76,16 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
       schemaGenerator: deps.schemaGenerator,
     }));
   }
+
+  if (deps.schemaEvolutionService) {
+    app.route('/domains', createEvolutionRoutes({
+      schemaEvolutionService: deps.schemaEvolutionService,
+    }));
+  }
+
+  app.route('/entries', createEntryRoutes({
+    knowledgeRepository: deps.knowledgeRepository,
+  }));
 
   return app;
 }

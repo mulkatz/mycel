@@ -34,7 +34,7 @@ function resolveBehavior(config?: BehaviorPreset | DomainBehaviorConfig): Domain
   return config;
 }
 
-// TODO: Phase 2 — hook schema evolution from conversation analysis
+// Schema evolution is implemented in services/schema-evolution/
 
 export function createSchemaGenerator(deps: SchemaGeneratorDeps): SchemaGenerator {
   const { llmClient, webSearchClient, proposalRepository, schemaRepository } = deps;

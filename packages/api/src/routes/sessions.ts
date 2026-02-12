@@ -4,6 +4,8 @@ import type { KnowledgeRepository } from '@mycel/core/src/repositories/knowledge
 import type { SchemaRepository } from '@mycel/core/src/repositories/schema.repository.js';
 import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
 import type { EmbeddingClient } from '@mycel/core/src/embedding/embedding-client.js';
+import type { FieldStatsRepository } from '@mycel/core/src/repositories/field-stats.repository.js';
+import type { EnrichmentOrchestrator } from '@mycel/core/src/services/enrichment/types.js';
 import { createSessionManager } from '@mycel/core/src/session/session-manager.js';
 import { SessionError } from '@mycel/shared/src/utils/errors.js';
 import type { AppEnv } from '../types.js';
@@ -15,6 +17,8 @@ export interface SessionRouteDeps {
   readonly schemaRepository: SchemaRepository;
   readonly llmClient: LlmClient;
   readonly embeddingClient?: EmbeddingClient;
+  readonly fieldStatsRepository?: FieldStatsRepository;
+  readonly enrichmentOrchestrator?: EnrichmentOrchestrator;
 }
 
 export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
@@ -56,6 +60,7 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
       sessionRepository: deps.sessionRepository,
       knowledgeRepository: deps.knowledgeRepository,
       embeddingClient: deps.embeddingClient,
+      fieldStatsRepository: deps.fieldStatsRepository,
     });
 
     const result = await sessionManager.initSession({ source: 'api' });
@@ -93,6 +98,9 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
       throw new SessionError(`Schema configuration not found for session: ${sessionId}`);
     }
 
+    const webSearch = domainSchema.behavior.webSearch;
+    const enableEnrichment = webSearch === 'enrichment' || webSearch === 'full';
+
     const sessionManager = createSessionManager({
       pipelineConfig: {
         domainConfig: domainSchema.config,
@@ -102,6 +110,8 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
       sessionRepository: deps.sessionRepository,
       knowledgeRepository: deps.knowledgeRepository,
       embeddingClient: deps.embeddingClient,
+      fieldStatsRepository: deps.fieldStatsRepository,
+      enrichmentOrchestrator: enableEnrichment ? deps.enrichmentOrchestrator : undefined,
     });
 
     const isFollowUp = session.turns.length > 0;
@@ -168,6 +178,7 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
       sessionRepository: deps.sessionRepository,
       knowledgeRepository: deps.knowledgeRepository,
       embeddingClient: deps.embeddingClient,
+      fieldStatsRepository: deps.fieldStatsRepository,
     });
 
     const ended = await sessionManager.endSession(sessionId);

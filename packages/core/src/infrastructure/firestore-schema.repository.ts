@@ -117,9 +117,11 @@ export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository
       const docRef = domainRef.doc();
 
       if (input.isActive) {
-        // Use a transaction to atomically deactivate existing schemas and create the new one
+        // Use a transaction to atomically deactivate same-name schemas and create the new one
         await db.runTransaction(async (tx) => {
-          const activeSnapshot = await tx.get(domainRef.where('isActive', '==', true));
+          const activeSnapshot = await tx.get(
+            domainRef.where('name', '==', input.name).where('isActive', '==', true),
+          );
           for (const doc of activeSnapshot.docs) {
             tx.update(doc.ref, { isActive: false, updatedAt: now });
           }

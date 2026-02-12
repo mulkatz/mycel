@@ -29,7 +29,23 @@ function buildContextSummary(
     const category = r.entry.categoryId !== '_uncategorized' ? `[${r.entry.categoryId}] ` : '';
     const content =
       r.entry.content.length > 150 ? r.entry.content.slice(0, 150) + '...' : r.entry.content;
-    const line = `- ${category}${r.entry.title} (relevance: ${r.score.toFixed(2)}): ${content}`;
+
+    let enrichmentMarker = '';
+    if (r.entry.enrichment?.claims) {
+      const contradicted = r.entry.enrichment.claims.filter((c) => c.status === 'contradicted');
+      const verifiedCount = r.entry.enrichment.claims.filter((c) => c.status === 'verified').length;
+
+      if (contradicted.length > 0) {
+        const disputes = contradicted
+          .map((c) => `${c.claim} [DISPUTED: ${c.evidence ?? 'web sources disagree'}]`)
+          .join('; ');
+        enrichmentMarker = ` | ${disputes}`;
+      } else if (verifiedCount > 0) {
+        enrichmentMarker = ` [${String(verifiedCount)} claims VERIFIED]`;
+      }
+    }
+
+    const line = `- ${category}${r.entry.title} (relevance: ${r.score.toFixed(2)}): ${content}${enrichmentMarker}`;
 
     if (r.entry.sessionId === currentSessionId) {
       sameSession.push(line);

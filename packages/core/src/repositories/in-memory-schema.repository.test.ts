@@ -89,16 +89,16 @@ describe('createInMemorySchemaRepository', () => {
       expect(result).toBeNull();
     });
 
-    it('should deactivate previous active schema when saving a new active one', async () => {
+    it('should deactivate previous active schema with same name when saving a new active one', async () => {
       const repo = createInMemorySchemaRepository();
       const first = await repo.saveDomainSchema({
-        name: 'first',
+        name: 'test-domain',
         version: 1,
         config: testDomainConfig,
         isActive: true,
       });
       await repo.saveDomainSchema({
-        name: 'second',
+        name: 'test-domain',
         version: 2,
         config: testDomainConfig,
         isActive: true,
@@ -108,7 +108,26 @@ describe('createInMemorySchemaRepository', () => {
       expect(firstLoaded?.isActive).toBe(false);
 
       const active = await repo.getActiveDomainSchema();
-      expect(active?.name).toBe('second');
+      expect(active?.version).toBe(2);
+    });
+
+    it('should not deactivate active schemas with different names', async () => {
+      const repo = createInMemorySchemaRepository();
+      const first = await repo.saveDomainSchema({
+        name: 'domain-a',
+        version: 1,
+        config: testDomainConfig,
+        isActive: true,
+      });
+      await repo.saveDomainSchema({
+        name: 'domain-b',
+        version: 1,
+        config: testDomainConfig,
+        isActive: true,
+      });
+
+      const firstLoaded = await repo.getDomainSchema(first.id);
+      expect(firstLoaded?.isActive).toBe(true);
     });
   });
 

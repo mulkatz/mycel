@@ -24,6 +24,23 @@ function buildEntryBlock(plan: ChapterPlan): string {
         lines.push(`- Confidence: ${String(Math.round(entry.confidence * 100))}%`);
       }
 
+      if (entry.enrichment?.claims) {
+        const verified = entry.enrichment.claims.filter((c) => c.status === 'verified');
+        const contradicted = entry.enrichment.claims.filter((c) => c.status === 'contradicted');
+
+        if (verified.length > 0) {
+          lines.push(`- Verified claims: ${verified.map((c) => `"${c.claim}" [verified]`).join(', ')}`);
+        }
+        if (contradicted.length > 0) {
+          lines.push(
+            `- Disputed claims: ${contradicted.map((c) => `"${c.claim}" [note: web sources suggest ${c.evidence ?? 'different information'}]`).join(', ')}`,
+          );
+        }
+        if (entry.enrichment.sourceUrls.length > 0) {
+          lines.push(`- Sources: ${entry.enrichment.sourceUrls.join(', ')}`);
+        }
+      }
+
       return lines.join('\n');
     })
     .join('\n\n');

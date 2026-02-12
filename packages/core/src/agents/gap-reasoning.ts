@@ -2,6 +2,7 @@ import type { GapReasoningOutput } from '@mycel/shared/src/types/agent.types.js'
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
 import type { PipelineGraphState } from '../orchestration/pipeline-state.js';
 import type { LlmClient } from '../llm/llm-client.js';
+import type { FieldStatsRepository } from '../repositories/field-stats.repository.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { AgentError } from '@mycel/shared/src/utils/errors.js';
 import { GapReasoningResultSchema, GapReasoningResultJsonSchema } from './agent-output.schemas.js';
@@ -15,6 +16,7 @@ const MAX_FOLLOW_UP_QUESTIONS = 3;
 export function createGapReasoningNode(
   domainConfig: DomainConfig,
   llmClient: LlmClient,
+  fieldStatsRepository?: FieldStatsRepository,
 ): (state: PipelineGraphState) => Promise<Partial<PipelineGraphState>> {
   return async (state: PipelineGraphState): Promise<Partial<PipelineGraphState>> => {
     const categoryId = state.classifierOutput?.result.categoryId;
@@ -190,11 +192,40 @@ Example response:
       const requiredFields = category.requiredFields ?? [];
       const optionalFields = category.optionalFields ?? [];
 
+      let fieldStatsContext = '';
+      if (fieldStatsRepository) {
+        try {
+          const stats = await fieldStatsRepository.getByCategory(domainConfig.name, categoryId);
+          const relevantStats = stats.filter((s) => s.timesAsked >= 5);
+          if (relevantStats.length > 0) {
+            const lines = relevantStats
+              .sort((a, b) => a.answerRate - b.answerRate)
+              .map(
+                (s) =>
+                  `- ${s.fieldName}: ${String(Math.round(s.answerRate * 100))}% (${String(s.timesAnswered)}/${String(s.timesAsked)})`,
+              );
+            fieldStatsContext = `
+[FIELD_STATS]
+Answer rates for fields in this category (consider deprioritizing very low rates):
+${lines.join('\n')}
+`;
+          }
+        } catch (error) {
+          log.warn(
+            {
+              error: error instanceof Error ? error.message : String(error),
+              categoryId,
+            },
+            'Failed to load field stats for gap reasoning',
+          );
+        }
+      }
+
       systemPrompt = `You are a gap-reasoning and gap analysis agent. Analyze the user's input for a knowledge entry in the "${category.label}" category.
 
 Required fields for this category: ${requiredFields.length > 0 ? requiredFields.join(', ') : 'none'}
 Optional fields for this category: ${optionalFields.length > 0 ? optionalFields.join(', ') : 'none'}
-
+${fieldStatsContext}
 ## Already Known
 ${contextSummary}
 ${skippedFieldsContext}

@@ -6,6 +6,7 @@ import type { PersonaConfig } from '@mycel/schemas/src/persona.schema.js';
 import type { LlmClient } from '../llm/llm-client.js';
 import type { EmbeddingClient } from '../embedding/embedding-client.js';
 import type { KnowledgeRepository } from '../repositories/knowledge.repository.js';
+import type { FieldStatsRepository } from '../repositories/field-stats.repository.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { PipelineGraphAnnotation, type PipelineGraphState } from './pipeline-state.js';
 import { createClassifierNode } from '../agents/classifier.js';
@@ -22,6 +23,7 @@ export interface PipelineConfig {
   readonly llmClient: LlmClient;
   readonly embeddingClient?: EmbeddingClient;
   readonly knowledgeRepository?: KnowledgeRepository;
+  readonly fieldStatsRepository?: FieldStatsRepository;
 }
 
 export interface PipelineRunOptions {
@@ -49,8 +51,6 @@ function routeAfterPersona(state: PipelineGraphState): string {
   return 'structuring';
 }
 
-// TODO: Phase 3 — check behavior.webSearch for enrichment/full mode
-
 export function createPipeline(config: PipelineConfig): Pipeline {
   log.info(
     { domain: config.domainConfig.name, persona: config.personaConfig.name },
@@ -63,7 +63,7 @@ export function createPipeline(config: PipelineConfig): Pipeline {
     knowledgeRepository: config.knowledgeRepository,
     domainSchemaId: config.domainConfig.name,
   });
-  const gapReasoningNode = createGapReasoningNode(config.domainConfig, config.llmClient);
+  const gapReasoningNode = createGapReasoningNode(config.domainConfig, config.llmClient, config.fieldStatsRepository);
   const personaNode = createPersonaNode(config.personaConfig, config.llmClient);
   const structuringNode = createStructuringNode(config.domainConfig, config.llmClient);
 

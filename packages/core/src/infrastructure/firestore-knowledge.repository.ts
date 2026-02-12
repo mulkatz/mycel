@@ -41,6 +41,7 @@ interface KnowledgeEntryDocument {
   migratedAt?: Timestamp;
   embeddingModel?: string;
   embeddingGeneratedAt?: Timestamp;
+  enrichment?: Record<string, unknown>;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -69,6 +70,7 @@ function entryFromDoc(id: string, data: KnowledgeEntryDocument): KnowledgeEntry 
     migratedAt: data.migratedAt?.toDate(),
     embeddingModel: data.embeddingModel,
     embeddingGeneratedAt: data.embeddingGeneratedAt?.toDate(),
+    enrichment: data.enrichment as KnowledgeEntry['enrichment'],
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
   };
@@ -144,6 +146,17 @@ export function createFirestoreKnowledgeRepository(db: Firestore): KnowledgeRepo
       const snapshot = await collectionRef
         .where('categoryId', '==', '_uncategorized')
         .where('status', '==', 'draft')
+        .orderBy('createdAt', 'desc')
+        .get();
+
+      return snapshot.docs.map((doc) => entryFromDoc(doc.id, doc.data() as KnowledgeEntryDocument));
+    },
+
+    async getUncategorizedByDomain(domainSchemaId: string): Promise<readonly KnowledgeEntry[]> {
+      const snapshot = await collectionRef
+        .where('categoryId', '==', '_uncategorized')
+        .where('status', '==', 'draft')
+        .where('domainSchemaId', '==', domainSchemaId)
         .orderBy('createdAt', 'desc')
         .get();
 
@@ -275,6 +288,9 @@ export function createFirestoreKnowledgeRepository(db: Firestore): KnowledgeRepo
       }
       if (updates.metadata !== undefined) {
         updateData['metadata'] = updates.metadata;
+      }
+      if (updates.enrichment !== undefined) {
+        updateData['enrichment'] = updates.enrichment as unknown as Record<string, unknown>;
       }
 
       try {

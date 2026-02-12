@@ -5,6 +5,7 @@ import type {
   KnowledgeSearchResult,
   KnowledgeSource,
 } from '@mycel/shared/src/types/knowledge.types.js';
+import type { KnowledgeEnrichment } from '@mycel/shared/src/types/enrichment.types.js';
 
 export interface CreateKnowledgeEntryInput {
   readonly sessionId: string;
@@ -34,6 +35,7 @@ export interface UpdateKnowledgeEntryInput {
   readonly structuredData?: Record<string, unknown>;
   readonly tags?: readonly string[];
   readonly metadata?: Record<string, unknown>;
+  readonly enrichment?: KnowledgeEnrichment;
 }
 
 export interface KnowledgeRepository {
@@ -42,6 +44,7 @@ export interface KnowledgeRepository {
   getBySession(sessionId: string): Promise<readonly KnowledgeEntry[]>;
   getByCategory(category: string): Promise<readonly KnowledgeEntry[]>;
   getUncategorized(): Promise<readonly KnowledgeEntry[]>;
+  getUncategorizedByDomain(domainSchemaId: string): Promise<readonly KnowledgeEntry[]>;
   queryByTopicKeywords(keywords: readonly string[]): Promise<readonly KnowledgeEntry[]>;
   searchSimilar(params: {
     domainSchemaId: string;

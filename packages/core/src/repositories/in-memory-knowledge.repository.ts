@@ -4,6 +4,7 @@ import type {
   KnowledgeSearchResult,
 } from '@mycel/shared/src/types/knowledge.types.js';
 import { PersistenceError } from '@mycel/shared/src/utils/errors.js';
+import { cosineSimilarity } from '@mycel/shared/src/utils/math.js';
 import type {
   CreateKnowledgeEntryInput,
   KnowledgeRepository,
@@ -12,19 +13,6 @@ import type {
 
 const MIN_SIMILARITY_SCORE = 0.7;
 const DEFAULT_SEARCH_LIMIT = 5;
-
-function cosineSimilarity(a: readonly number[], b: readonly number[]): number {
-  let dotProduct = 0;
-  let magnitudeA = 0;
-  let magnitudeB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-    magnitudeA += a[i] * a[i];
-    magnitudeB += b[i] * b[i];
-  }
-  const magnitude = Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB);
-  return magnitude === 0 ? 0 : dotProduct / magnitude;
-}
 
 export function createInMemoryKnowledgeRepository(): KnowledgeRepository {
   const entries = new Map<string, KnowledgeEntry>();
@@ -77,6 +65,17 @@ export function createInMemoryKnowledgeRepository(): KnowledgeRepository {
       return Promise.resolve(
         [...entries.values()].filter(
           (e) => e.categoryId === '_uncategorized' && e.status === 'draft',
+        ),
+      );
+    },
+
+    getUncategorizedByDomain(domainSchemaId: string): Promise<readonly KnowledgeEntry[]> {
+      return Promise.resolve(
+        [...entries.values()].filter(
+          (e) =>
+            e.categoryId === '_uncategorized' &&
+            e.status === 'draft' &&
+            e.domainSchemaId === domainSchemaId,
         ),
       );
     },
@@ -137,6 +136,7 @@ export function createInMemoryKnowledgeRepository(): KnowledgeRepository {
         ...(updates.structuredData !== undefined && { structuredData: updates.structuredData }),
         ...(updates.tags !== undefined && { tags: updates.tags }),
         ...(updates.metadata !== undefined && { metadata: updates.metadata }),
+        ...(updates.enrichment !== undefined && { enrichment: updates.enrichment }),
         updatedAt: new Date(),
       };
       entries.set(id, updated);
