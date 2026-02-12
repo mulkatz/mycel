@@ -27,7 +27,9 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
   sessions.post('/', async (c) => {
     const body = CreateSessionSchema.parse(await c.req.json());
 
-    const domainSchema = await deps.schemaRepository.getDomainSchemaByName(body.domainSchemaId);
+    const domainSchema =
+      (await deps.schemaRepository.getDomainSchemaByName(body.domainSchemaId)) ??
+      (await deps.schemaRepository.getDomainSchema(body.domainSchemaId));
     if (!domainSchema) {
       return c.json(
         {
@@ -39,7 +41,9 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
       );
     }
 
-    const personaSchema = await deps.schemaRepository.getPersonaSchemaByName(body.personaSchemaId);
+    const personaSchema =
+      (await deps.schemaRepository.getPersonaSchemaByName(body.personaSchemaId)) ??
+      (await deps.schemaRepository.getPersonaSchema(body.personaSchemaId));
     if (!personaSchema) {
       return c.json(
         {
