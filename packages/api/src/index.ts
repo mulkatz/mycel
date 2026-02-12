@@ -4,6 +4,8 @@ import { createFirestoreSessionRepository } from '@mycel/core/src/infrastructure
 import { createFirestoreKnowledgeRepository } from '@mycel/core/src/infrastructure/firestore-knowledge.repository.js';
 import { createFirestoreSchemaRepository } from '@mycel/core/src/infrastructure/firestore-schema.repository.js';
 import { createLlmClient } from '@mycel/core/src/llm/llm-client.js';
+import { createVertexEmbeddingClient } from '@mycel/core/src/embedding/vertex-embedding-client.js';
+import { createMockEmbeddingClient } from '@mycel/core/src/embedding/mock-embedding-client.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { createApp } from './app.js';
 
@@ -14,12 +16,17 @@ async function main(): Promise<void> {
 
   const db = createFirestoreClient();
   const llmClient = await createLlmClient();
+  const embeddingClient =
+    process.env['MYCEL_MOCK_LLM'] === 'true'
+      ? createMockEmbeddingClient()
+      : createVertexEmbeddingClient();
 
   const app = createApp({
     sessionRepository: createFirestoreSessionRepository(db),
     knowledgeRepository: createFirestoreKnowledgeRepository(db),
     schemaRepository: createFirestoreSchemaRepository(db),
     llmClient,
+    embeddingClient,
   });
 
   log.info({ port }, 'Starting Mycel API server');
@@ -30,6 +37,9 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  log.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to start API server');
+  log.error(
+    { error: error instanceof Error ? error.message : String(error) },
+    'Failed to start API server',
+  );
   process.exit(1);
 });

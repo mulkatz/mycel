@@ -20,11 +20,11 @@ Before starting any task from the backlog:
 - [x] Persistence layer (Firestore Native Mode, Repository Pattern, emulator integration tests)
 - [x] Terraform deployment (dev environment on GCP: Firestore, Cloud Run, IAM, Artifact Registry)
 - [x] API layer (Cloud Run HTTP entrypoint, request/response contracts, proactive greeting)
+- [x] RAG foundation (embedding generation, Firestore vector search, Context Dispatcher)
 
 ## In Progress
 
 ## Backlog (ordered by priority)
-- [ ] RAG foundation (embedding generation, Vertex AI Vector Search, Context Dispatcher)
 - [ ] Dynamic schema evolution (schemas emerge from conversation, no predefined categories required)
 - [ ] Web Search agent (autonomous research during conversation, validate user claims, enrich follow-up questions)
 - [ ] Audio ingestion (Speech-to-Text via Vertex AI → pipeline)

@@ -1,12 +1,11 @@
 import { StateGraph, START, END } from '@langchain/langgraph';
-import type {
-  AgentInput,
-  PipelineState,
-} from '@mycel/shared/src/types/agent.types.js';
+import type { AgentInput, PipelineState } from '@mycel/shared/src/types/agent.types.js';
 import type { TurnContext } from '@mycel/shared/src/types/session.types.js';
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
 import type { PersonaConfig } from '@mycel/schemas/src/persona.schema.js';
 import type { LlmClient } from '../llm/llm-client.js';
+import type { EmbeddingClient } from '../embedding/embedding-client.js';
+import type { KnowledgeRepository } from '../repositories/knowledge.repository.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { PipelineGraphAnnotation } from './pipeline-state.js';
 import { createClassifierNode } from '../agents/classifier.js';
@@ -21,6 +20,8 @@ export interface PipelineConfig {
   readonly domainConfig: DomainConfig;
   readonly personaConfig: PersonaConfig;
   readonly llmClient: LlmClient;
+  readonly embeddingClient?: EmbeddingClient;
+  readonly knowledgeRepository?: KnowledgeRepository;
 }
 
 export interface PipelineRunOptions {
@@ -39,7 +40,11 @@ export function createPipeline(config: PipelineConfig): Pipeline {
   );
 
   const classifierNode = createClassifierNode(config.domainConfig, config.llmClient);
-  const contextDispatcherNode = createContextDispatcherNode();
+  const contextDispatcherNode = createContextDispatcherNode({
+    embeddingClient: config.embeddingClient,
+    knowledgeRepository: config.knowledgeRepository,
+    domainSchemaId: config.domainConfig.name,
+  });
   const gapReasoningNode = createGapReasoningNode(config.domainConfig, config.llmClient);
   const personaNode = createPersonaNode(config.personaConfig, config.llmClient);
   const structuringNode = createStructuringNode(config.domainConfig, config.llmClient);

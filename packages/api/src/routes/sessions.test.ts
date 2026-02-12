@@ -167,7 +167,7 @@ describe('API Routes', () => {
     it('should return 200 with status ok', async () => {
       const res = await app.request('/health');
       expect(res.status).toBe(200);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body).toEqual({ status: 'ok', version: '0.1.0' });
     });
   });
@@ -182,7 +182,7 @@ describe('API Routes', () => {
         }),
       );
       expect(res.status).toBe(201);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('sessionId');
       expect(body).toHaveProperty('greeting');
       expect(body).toHaveProperty('status', 'active');
@@ -199,7 +199,7 @@ describe('API Routes', () => {
         }),
       );
       expect(res.status).toBe(404);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('code', 'SCHEMA_NOT_FOUND');
     });
 
@@ -212,17 +212,14 @@ describe('API Routes', () => {
         }),
       );
       expect(res.status).toBe(404);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('code', 'SCHEMA_NOT_FOUND');
     });
 
     it('should return 400 for invalid request body', async () => {
-      const res = await app.request(
-        '/sessions',
-        jsonPost('/sessions', { domainSchemaId: '' }),
-      );
+      const res = await app.request('/sessions', jsonPost('/sessions', { domainSchemaId: '' }));
       expect(res.status).toBe(400);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('code', 'VALIDATION_ERROR');
     });
   });
@@ -236,7 +233,7 @@ describe('API Routes', () => {
           personaSchemaId: 'test-persona',
         }),
       );
-      const { sessionId } = await createRes.json() as { sessionId: string };
+      const { sessionId } = (await createRes.json()) as { sessionId: string };
 
       const turnRes = await app.request(
         `/sessions/${sessionId}/turns`,
@@ -245,7 +242,7 @@ describe('API Routes', () => {
         }),
       );
       expect(turnRes.status).toBe(200);
-      const body = await turnRes.json() as Record<string, unknown>;
+      const body = (await turnRes.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('sessionId', sessionId);
       expect(body).toHaveProperty('turnIndex', 1);
       expect(body).toHaveProperty('response');
@@ -261,7 +258,7 @@ describe('API Routes', () => {
         }),
       );
       expect(res.status).toBe(404);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('code', 'SESSION_NOT_FOUND');
     });
 
@@ -273,13 +270,10 @@ describe('API Routes', () => {
           personaSchemaId: 'test-persona',
         }),
       );
-      const { sessionId } = await createRes.json() as { sessionId: string };
+      const { sessionId } = (await createRes.json()) as { sessionId: string };
 
       // End the session
-      await app.request(
-        `/sessions/${sessionId}/end`,
-        { method: 'POST' },
-      );
+      await app.request(`/sessions/${sessionId}/end`, { method: 'POST' });
 
       // Try to add a turn
       const turnRes = await app.request(
@@ -289,7 +283,7 @@ describe('API Routes', () => {
         }),
       );
       expect(turnRes.status).toBe(409);
-      const body = await turnRes.json() as Record<string, unknown>;
+      const body = (await turnRes.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('code', 'SESSION_COMPLETED');
     });
 
@@ -301,7 +295,7 @@ describe('API Routes', () => {
           personaSchemaId: 'test-persona',
         }),
       );
-      const { sessionId } = await createRes.json() as { sessionId: string };
+      const { sessionId } = (await createRes.json()) as { sessionId: string };
 
       const turnRes = await app.request(
         `/sessions/${sessionId}/turns`,
@@ -322,11 +316,11 @@ describe('API Routes', () => {
           personaSchemaId: 'test-persona',
         }),
       );
-      const { sessionId } = await createRes.json() as { sessionId: string };
+      const { sessionId } = (await createRes.json()) as { sessionId: string };
 
       const res = await app.request(`/sessions/${sessionId}`);
       expect(res.status).toBe(200);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('sessionId', sessionId);
       expect(body).toHaveProperty('status', 'active');
       expect(body).toHaveProperty('turnCount', 0);
@@ -338,7 +332,7 @@ describe('API Routes', () => {
     it('should return 404 for nonexistent session', async () => {
       const res = await app.request('/sessions/nonexistent');
       expect(res.status).toBe(404);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('code', 'SESSION_NOT_FOUND');
     });
   });
@@ -352,14 +346,11 @@ describe('API Routes', () => {
           personaSchemaId: 'test-persona',
         }),
       );
-      const { sessionId } = await createRes.json() as { sessionId: string };
+      const { sessionId } = (await createRes.json()) as { sessionId: string };
 
-      const res = await app.request(
-        `/sessions/${sessionId}/end`,
-        { method: 'POST' },
-      );
+      const res = await app.request(`/sessions/${sessionId}/end`, { method: 'POST' });
       expect(res.status).toBe(200);
-      const body = await res.json() as Record<string, unknown>;
+      const body = (await res.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('sessionId', sessionId);
       expect(body).toHaveProperty('status');
       expect(body).toHaveProperty('knowledgeEntryCount');
@@ -367,10 +358,7 @@ describe('API Routes', () => {
     });
 
     it('should return 404 for nonexistent session', async () => {
-      const res = await app.request(
-        '/sessions/nonexistent/end',
-        { method: 'POST' },
-      );
+      const res = await app.request('/sessions/nonexistent/end', { method: 'POST' });
       expect(res.status).toBe(404);
     });
   });
@@ -389,9 +377,7 @@ describe('API Routes', () => {
       const res = await app.request('/health');
       const requestId = res.headers.get('x-request-id');
       expect(requestId).toBeTruthy();
-      expect(requestId).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-      );
+      expect(requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     });
   });
 });

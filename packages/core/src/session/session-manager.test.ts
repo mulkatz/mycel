@@ -48,10 +48,15 @@ const personaConfig: PersonaConfig = {
   systemPromptTemplate: 'You are a test chronicler.',
 };
 
-function createMockLlm(): { client: LlmClient; callArgs: Array<{ systemPrompt: string; userMessage: string }> } {
+function createMockLlm(): {
+  client: LlmClient;
+  callArgs: Array<{ systemPrompt: string; userMessage: string }>;
+} {
   const callArgs: Array<{ systemPrompt: string; userMessage: string }> = [];
-  const invokeFn = vi.fn().mockImplementation((request: { systemPrompt: string; userMessage: string }) => {
-    callArgs.push(request);
+  const invokeFn = vi
+    .fn()
+    .mockImplementation((request: { systemPrompt: string; userMessage: string }) => {
+      callArgs.push(request);
       const prompt = request.systemPrompt.toLowerCase();
       const isFollowUp = prompt.includes('[follow_up_context]');
       const hasSessionContext = prompt.includes('[session_context]');
@@ -308,8 +313,8 @@ describe('SessionManager', () => {
       isFollowUpResponse: false,
     });
 
-    const classifierCallsBefore = callArgs.filter(
-      (arg) => arg.systemPrompt.toLowerCase().includes('classifier'),
+    const classifierCallsBefore = callArgs.filter((arg) =>
+      arg.systemPrompt.toLowerCase().includes('classifier'),
     ).length;
 
     await manager.continueSession(turn1.sessionId, {
@@ -317,8 +322,8 @@ describe('SessionManager', () => {
       isFollowUpResponse: true,
     });
 
-    const classifierCallsAfter = callArgs.filter(
-      (arg) => arg.systemPrompt.toLowerCase().includes('classifier'),
+    const classifierCallsAfter = callArgs.filter((arg) =>
+      arg.systemPrompt.toLowerCase().includes('classifier'),
     ).length;
 
     // Classifier should be called again on follow-up
@@ -343,7 +348,8 @@ describe('SessionManager', () => {
     expect(session?.turns).toHaveLength(2);
 
     // Turn 1 should have questions
-    const turn1Questions = session?.turns[0].pipelineResult.personaOutput?.result.followUpQuestions ?? [];
+    const turn1Questions =
+      session?.turns[0].pipelineResult.personaOutput?.result.followUpQuestions ?? [];
     expect(turn1Questions.length).toBeGreaterThan(0);
   });
 

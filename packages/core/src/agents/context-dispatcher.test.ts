@@ -1,8 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { PipelineGraphState } from '../orchestration/pipeline-state.js';
 import { createContextDispatcherNode } from './context-dispatcher.js';
+import type { EmbeddingClient } from '../embedding/embedding-client.js';
+import type { KnowledgeRepository } from '../repositories/knowledge.repository.js';
+import { EMBEDDING_DIMENSION } from '../embedding/embedding-client.js';
 
-function createMockState(): PipelineGraphState {
+function createMockState(overrides: Partial<PipelineGraphState> = {}): PipelineGraphState {
   return {
     sessionId: 'test-session',
     input: { sessionId: 'test-session', content: 'test content', metadata: {} },
@@ -17,18 +20,23 @@ function createMockState(): PipelineGraphState {
     structuringOutput: undefined,
     turnContext: undefined,
     activeCategory: undefined,
+    ...overrides,
   };
 }
 
+function createMockEmbedding(): number[] {
+  return new Array<number>(EMBEDDING_DIMENSION).fill(0.1);
+}
+
 describe('createContextDispatcherNode', () => {
-  it('should return empty context as stub', async () => {
+  it('should return empty context when no deps provided', async () => {
     const node = createContextDispatcherNode();
     const result = await node(createMockState());
 
     expect(result.contextDispatcherOutput).toBeDefined();
     expect(result.contextDispatcherOutput?.agentRole).toBe('context-dispatcher');
     expect(result.contextDispatcherOutput?.result.relevantContext).toEqual([]);
-    expect(result.contextDispatcherOutput?.result.contextSummary).toContain('not yet integrated');
+    expect(result.contextDispatcherOutput?.result.contextSummary).toContain('not configured');
   });
 
   it('should have confidence of 1.0', async () => {
@@ -36,5 +44,103 @@ describe('createContextDispatcherNode', () => {
     const result = await node(createMockState());
 
     expect(result.contextDispatcherOutput?.confidence).toBe(1.0);
+  });
+
+  it('should return empty context when embedding client not provided', async () => {
+    const node = createContextDispatcherNode({
+      domainSchemaId: 'test-domain',
+    });
+    const result = await node(createMockState());
+
+    expect(result.contextDispatcherOutput?.result.relevantContext).toEqual([]);
+  });
+
+  it('should perform vector search when deps are provided', async () => {
+    const generateEmbeddingFn = vi.fn().mockResolvedValue(createMockEmbedding());
+    const mockEmbeddingClient: EmbeddingClient = {
+      generateEmbedding: generateEmbeddingFn,
+      generateEmbeddings: vi.fn(),
+    };
+
+    const mockEntry = {
+      id: 'entry-1',
+      categoryId: 'history',
+      title: 'Old Church',
+      content: 'The old church was built in 1732.',
+      source: { type: 'text' as const },
+      structuredData: {},
+      tags: ['history'],
+      metadata: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const searchSimilarFn = vi.fn().mockResolvedValue([{ entry: mockEntry, score: 0.85 }]);
+    const mockKnowledgeRepo = {
+      searchSimilar: searchSimilarFn,
+    } as unknown as KnowledgeRepository;
+
+    const node = createContextDispatcherNode({
+      embeddingClient: mockEmbeddingClient,
+      knowledgeRepository: mockKnowledgeRepo,
+      domainSchemaId: 'test-domain',
+    });
+
+    const result = await node(createMockState());
+
+    expect(generateEmbeddingFn).toHaveBeenCalled();
+    expect(searchSimilarFn).toHaveBeenCalledWith({
+      domainSchemaId: 'test-domain',
+      embedding: createMockEmbedding(),
+      limit: 5,
+      excludeSessionId: 'test-session',
+    });
+
+    expect(result.contextDispatcherOutput?.result.relevantContext).toHaveLength(1);
+    expect(result.contextDispatcherOutput?.result.contextSummary).toContain('Old Church');
+    expect(result.contextDispatcherOutput?.result.contextSummary).toContain('0.85');
+  });
+
+  it('should gracefully handle embedding failure', async () => {
+    const mockEmbeddingClient: EmbeddingClient = {
+      generateEmbedding: vi.fn().mockRejectedValue(new Error('Vertex AI unavailable')),
+      generateEmbeddings: vi.fn(),
+    };
+
+    const mockKnowledgeRepo = {
+      searchSimilar: vi.fn(),
+    } as unknown as KnowledgeRepository;
+
+    const node = createContextDispatcherNode({
+      embeddingClient: mockEmbeddingClient,
+      knowledgeRepository: mockKnowledgeRepo,
+      domainSchemaId: 'test-domain',
+    });
+
+    const result = await node(createMockState());
+
+    expect(result.contextDispatcherOutput?.result.relevantContext).toEqual([]);
+    expect(result.contextDispatcherOutput?.result.contextSummary).toContain('No related knowledge');
+  });
+
+  it('should gracefully handle search failure', async () => {
+    const mockEmbeddingClient: EmbeddingClient = {
+      generateEmbedding: vi.fn().mockResolvedValue(createMockEmbedding()),
+      generateEmbeddings: vi.fn(),
+    };
+
+    const mockKnowledgeRepo = {
+      searchSimilar: vi.fn().mockRejectedValue(new Error('Firestore error')),
+    } as unknown as KnowledgeRepository;
+
+    const node = createContextDispatcherNode({
+      embeddingClient: mockEmbeddingClient,
+      knowledgeRepository: mockKnowledgeRepo,
+      domainSchemaId: 'test-domain',
+    });
+
+    const result = await node(createMockState());
+
+    expect(result.contextDispatcherOutput?.result.relevantContext).toEqual([]);
   });
 });

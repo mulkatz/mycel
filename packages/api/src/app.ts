@@ -4,6 +4,7 @@ import type { SessionRepository } from '@mycel/core/src/repositories/session.rep
 import type { KnowledgeRepository } from '@mycel/core/src/repositories/knowledge.repository.js';
 import type { SchemaRepository } from '@mycel/core/src/repositories/schema.repository.js';
 import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
+import type { EmbeddingClient } from '@mycel/core/src/embedding/embedding-client.js';
 import type { AppEnv } from './types.js';
 import { requestId } from './middleware/request-id.js';
 import { errorHandler } from './middleware/error-handler.js';
@@ -18,6 +19,7 @@ export interface AppDependencies {
   readonly knowledgeRepository: KnowledgeRepository;
   readonly schemaRepository: SchemaRepository;
   readonly llmClient: LlmClient;
+  readonly embeddingClient?: EmbeddingClient;
 }
 
 export function createApp(deps: AppDependencies): Hono<AppEnv> {

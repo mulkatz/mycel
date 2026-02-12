@@ -1,6 +1,11 @@
 import type { Firestore } from '@google-cloud/firestore';
 import { FieldValue, Timestamp } from '@google-cloud/firestore';
-import type { Session, Turn, SessionStatus, SessionMetadata } from '@mycel/shared/src/types/session.types.js';
+import type {
+  Session,
+  Turn,
+  SessionStatus,
+  SessionMetadata,
+} from '@mycel/shared/src/types/session.types.js';
 import type { ClassifierOutput, PipelineState } from '@mycel/shared/src/types/agent.types.js';
 import type { KnowledgeEntry } from '@mycel/shared/src/types/knowledge.types.js';
 import type {
@@ -123,10 +128,7 @@ export function createFirestoreSessionRepository(db: Firestore): SessionReposito
         timestamp: now,
       };
 
-      const turnRef = sessionsRef
-        .doc(sessionId)
-        .collection(TURNS_SUBCOLLECTION)
-        .doc();
+      const turnRef = sessionsRef.doc(sessionId).collection(TURNS_SUBCOLLECTION).doc();
 
       await turnRef.set(turnData);
       await sessionsRef.doc(sessionId).update({

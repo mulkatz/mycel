@@ -28,6 +28,8 @@ export function createGapReasoningNode(
 
     const contextSummary =
       state.contextDispatcherOutput?.result.contextSummary ?? 'No context available.';
+    const hasRetrievedContext =
+      (state.contextDispatcherOutput?.result.relevantContext.length ?? 0) > 0;
 
     let followUpContext = '';
     if (state.turnContext?.isFollowUp) {
@@ -65,7 +67,9 @@ Focus ONLY on remaining gaps that have not been filled yet.
 Classifier summary: ${classifierSummary}
 ${suggestedLabel ? `Suggested topic area: ${suggestedLabel}` : ''}
 
-Existing context: ${contextSummary}
+## Already Known
+${contextSummary}
+${hasRetrievedContext ? '\nIMPORTANT: Do NOT ask about information that is already captured above. Focus on gaps — what is NOT yet known. If the user shares something already in the knowledge base, acknowledge it briefly and ask about connected, unknown aspects.\n' : ''}
 ${followUpContext}
 Your task is to understand what the user is sharing and ask questions that help capture their knowledge more fully. You are NOT checking against a predefined list of fields.
 
@@ -99,7 +103,9 @@ Example response:
 Required fields for this category: ${requiredFields.length > 0 ? requiredFields.join(', ') : 'none'}
 Optional fields for this category: ${optionalFields.length > 0 ? optionalFields.join(', ') : 'none'}
 
-Existing context: ${contextSummary}
+## Already Known
+${contextSummary}
+${hasRetrievedContext ? '\nIMPORTANT: Do NOT ask about information that is already captured above. Focus on gaps — what is NOT yet known. If the user shares something already in the knowledge base, acknowledge it briefly and ask about connected, unknown aspects.\n' : ''}
 ${followUpContext}
 Identify what information is missing or incomplete. For each gap, specify the field name, a description of what is missing, and a priority (high for required fields, medium/low for optional).
 

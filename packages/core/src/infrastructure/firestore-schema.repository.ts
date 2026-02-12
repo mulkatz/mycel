@@ -69,10 +69,7 @@ export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository
     },
 
     async getDomainSchemaByName(name: string): Promise<PersistedDomainSchema | null> {
-      const snapshot = await domainRef
-        .where('name', '==', name)
-        .limit(1)
-        .get();
+      const snapshot = await domainRef.where('name', '==', name).limit(1).get();
 
       if (snapshot.empty) {
         return null;
@@ -82,10 +79,7 @@ export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository
     },
 
     async getActiveDomainSchema(): Promise<PersistedDomainSchema | null> {
-      const snapshot = await domainRef
-        .where('isActive', '==', true)
-        .limit(1)
-        .get();
+      const snapshot = await domainRef.where('isActive', '==', true).limit(1).get();
 
       if (snapshot.empty) {
         return null;
@@ -130,10 +124,7 @@ export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository
     },
 
     async getPersonaSchemaByName(name: string): Promise<PersistedPersonaSchema | null> {
-      const snapshot = await personaRef
-        .where('name', '==', name)
-        .limit(1)
-        .get();
+      const snapshot = await personaRef.where('name', '==', name).limit(1).get();
 
       if (snapshot.empty) {
         return null;
@@ -143,10 +134,7 @@ export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository
     },
 
     async getActivePersonaSchema(): Promise<PersistedPersonaSchema | null> {
-      const snapshot = await personaRef
-        .where('isActive', '==', true)
-        .limit(1)
-        .get();
+      const snapshot = await personaRef.where('isActive', '==', true).limit(1).get();
 
       if (snapshot.empty) {
         return null;

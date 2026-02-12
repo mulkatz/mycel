@@ -24,7 +24,10 @@ const domainConfig: DomainConfig = {
   },
 };
 
-function createMockState(content: string, overrides?: Partial<PipelineGraphState>): PipelineGraphState {
+function createMockState(
+  content: string,
+  overrides?: Partial<PipelineGraphState>,
+): PipelineGraphState {
   return {
     sessionId: 'test-session',
     input: { sessionId: 'test-session', content, metadata: {} },
@@ -132,9 +135,7 @@ describe('createClassifierNode', () => {
     expect(result.classifierOutput).toBeDefined();
     expect(result.classifierOutput?.result.categoryId).toBe('_uncategorized');
     expect(result.classifierOutput?.result.confidence).toBe(0.3);
-    expect(result.classifierOutput?.result.summary).toBe(
-      'Personal childhood memory about summers',
-    );
+    expect(result.classifierOutput?.result.summary).toBe('Personal childhood memory about summers');
     expect(result.classifierOutput?.result.suggestedCategoryLabel).toBe('Childhood Memories');
   });
 

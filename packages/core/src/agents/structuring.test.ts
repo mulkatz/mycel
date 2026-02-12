@@ -79,9 +79,7 @@ function createUncategorizedState(): PipelineGraphState {
     gapReasoningOutput: {
       agentRole: 'gap-reasoning',
       result: {
-        gaps: [
-          { field: 'timeframe', description: 'When did this happen?', priority: 'medium' },
-        ],
+        gaps: [{ field: 'timeframe', description: 'When did this happen?', priority: 'medium' }],
         followUpQuestions: ['When did this happen?'],
       },
       confidence: 1.0,

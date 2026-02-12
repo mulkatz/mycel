@@ -73,3 +73,22 @@ resource "google_firestore_index" "knowledge_entries_session_created" {
     order      = "ASCENDING"
   }
 }
+
+resource "google_firestore_index" "knowledge_entries_vector" {
+  project    = var.project_id
+  database   = google_firestore_database.main.name
+  collection = "knowledgeEntries"
+
+  fields {
+    field_path = "domainSchemaId"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "embedding"
+    vector_config {
+      dimension = 768
+      flat {}
+    }
+  }
+}

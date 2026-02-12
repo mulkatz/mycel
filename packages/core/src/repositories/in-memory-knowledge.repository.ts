@@ -1,11 +1,30 @@
 import { randomUUID } from 'node:crypto';
-import type { KnowledgeEntry } from '@mycel/shared/src/types/knowledge.types.js';
+import type {
+  KnowledgeEntry,
+  KnowledgeSearchResult,
+} from '@mycel/shared/src/types/knowledge.types.js';
 import { PersistenceError } from '@mycel/shared/src/utils/errors.js';
 import type {
   CreateKnowledgeEntryInput,
   KnowledgeRepository,
   UpdateKnowledgeEntryInput,
 } from './knowledge.repository.js';
+
+const MIN_SIMILARITY_SCORE = 0.7;
+const DEFAULT_SEARCH_LIMIT = 5;
+
+function cosineSimilarity(a: readonly number[], b: readonly number[]): number {
+  let dotProduct = 0;
+  let magnitudeA = 0;
+  let magnitudeB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    magnitudeA += a[i] * a[i];
+    magnitudeB += b[i] * b[i];
+  }
+  const magnitude = Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB);
+  return magnitude === 0 ? 0 : dotProduct / magnitude;
+}
 
 export function createInMemoryKnowledgeRepository(): KnowledgeRepository {
   const entries = new Map<string, KnowledgeEntry>();
@@ -33,6 +52,10 @@ export function createInMemoryKnowledgeRepository(): KnowledgeRepository {
         topicKeywords: input.topicKeywords,
         rawInput: input.rawInput,
         status: 'draft',
+        domainSchemaId: input.domainSchemaId,
+        embedding: input.embedding ? [...input.embedding] : undefined,
+        embeddingModel: input.embeddingModel,
+        embeddingGeneratedAt: input.embedding ? now : undefined,
       };
       entries.set(entry.id, entry);
       return Promise.resolve(entry);
@@ -60,10 +83,35 @@ export function createInMemoryKnowledgeRepository(): KnowledgeRepository {
 
     queryByTopicKeywords(keywords: readonly string[]): Promise<readonly KnowledgeEntry[]> {
       return Promise.resolve(
-        [...entries.values()].filter((e) =>
-          e.topicKeywords?.some((k) => keywords.includes(k)),
-        ),
+        [...entries.values()].filter((e) => e.topicKeywords?.some((k) => keywords.includes(k))),
       );
+    },
+
+    searchSimilar(params: {
+      domainSchemaId: string;
+      embedding: readonly number[];
+      limit?: number;
+      excludeSessionId?: string;
+    }): Promise<readonly KnowledgeSearchResult[]> {
+      const limit = params.limit ?? DEFAULT_SEARCH_LIMIT;
+
+      const candidates = [...entries.values()].filter((e) => {
+        if (e.domainSchemaId !== params.domainSchemaId) return false;
+        if (!e.embedding || e.embedding.length === 0) return false;
+        if (params.excludeSessionId && e.sessionId === params.excludeSessionId) return false;
+        return true;
+      });
+
+      const scored: KnowledgeSearchResult[] = candidates
+        .map((entry) => ({
+          entry,
+          score: cosineSimilarity(params.embedding, entry.embedding ?? []),
+        }))
+        .filter((r) => r.score >= MIN_SIMILARITY_SCORE)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+
+      return Promise.resolve(scored);
     },
 
     update(id: string, updates: UpdateKnowledgeEntryInput): Promise<void> {

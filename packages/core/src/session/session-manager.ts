@@ -9,7 +9,13 @@ import type {
 import type { PipelineState } from '@mycel/shared/src/types/agent.types.js';
 import type { Pipeline, PipelineConfig } from '../orchestration/pipeline.js';
 import type { SessionRepository } from '../repositories/session.repository.js';
-import type { KnowledgeRepository, CreateKnowledgeEntryInput } from '../repositories/knowledge.repository.js';
+import type {
+  KnowledgeRepository,
+  CreateKnowledgeEntryInput,
+} from '../repositories/knowledge.repository.js';
+import type { EmbeddingClient } from '../embedding/embedding-client.js';
+import { buildEmbeddingText } from '../embedding/embedding-text-builder.js';
+import { DEFAULT_EMBEDDING_MODEL } from '../embedding/embedding-client.js';
 import { createPipeline } from '../orchestration/pipeline.js';
 import { calculateCompleteness } from './completeness.js';
 import { generateGreeting } from './greeting.js';
@@ -22,6 +28,7 @@ export interface SessionManagerConfig {
   readonly pipelineConfig: PipelineConfig;
   readonly sessionRepository: SessionRepository;
   readonly knowledgeRepository?: KnowledgeRepository;
+  readonly embeddingClient?: EmbeddingClient;
 }
 
 export interface InitSessionResult {
@@ -37,7 +44,11 @@ export interface SessionManager {
   getSession(sessionId: string): Promise<Session>;
 }
 
-function buildTurnSummary(turnNumber: number, input: TurnInput, result: PipelineState): TurnSummary {
+function buildTurnSummary(
+  turnNumber: number,
+  input: TurnInput,
+  result: PipelineState,
+): TurnSummary {
   const gaps = result.gapReasoningOutput?.result.gaps.map((g) => g.field) ?? [];
   const filledFields = Object.keys(result.structuringOutput?.result.entry.structuredData ?? {});
   return {
@@ -81,6 +92,8 @@ function buildSessionResponse(
 
 async function persistKnowledgeEntry(
   knowledgeRepo: KnowledgeRepository | undefined,
+  embeddingClient: EmbeddingClient | undefined,
+  domainSchemaId: string,
   result: PipelineState,
   sessionId: string,
   turnId: string,
@@ -95,6 +108,22 @@ async function persistKnowledgeEntry(
     return;
   }
 
+  let embedding: number[] | undefined;
+  let embeddingModel: string | undefined;
+
+  if (embeddingClient) {
+    try {
+      const text = buildEmbeddingText(entry);
+      embedding = await embeddingClient.generateEmbedding(text);
+      embeddingModel = process.env['MYCEL_EMBEDDING_MODEL'] ?? DEFAULT_EMBEDDING_MODEL;
+    } catch (error) {
+      log.warn(
+        { error: error instanceof Error ? error.message : String(error), sessionId },
+        'Embedding generation failed, persisting without embedding',
+      );
+    }
+  }
+
   const classifierResult = result.classifierOutput?.result;
   const input: CreateKnowledgeEntryInput = {
     sessionId,
@@ -105,6 +134,7 @@ async function persistKnowledgeEntry(
     suggestedCategoryLabel: classifierResult?.suggestedCategoryLabel ?? entry.categoryId,
     topicKeywords: [...entry.tags],
     rawInput,
+    domainSchemaId,
     title: entry.title,
     content: entry.content,
     source: entry.source,
@@ -112,15 +142,23 @@ async function persistKnowledgeEntry(
     tags: [...entry.tags],
     metadata: entry.metadata,
     followUp: entry.followUp,
+    embedding,
+    embeddingModel,
   };
 
   await knowledgeRepo.create(input);
 }
 
 export function createSessionManager(config: SessionManagerConfig): SessionManager {
-  const pipeline: Pipeline = createPipeline(config.pipelineConfig);
+  const pipelineConfig: PipelineConfig = {
+    ...config.pipelineConfig,
+    embeddingClient: config.embeddingClient ?? config.pipelineConfig.embeddingClient,
+    knowledgeRepository: config.knowledgeRepository ?? config.pipelineConfig.knowledgeRepository,
+  };
+  const pipeline: Pipeline = createPipeline(pipelineConfig);
   const sessionRepo = config.sessionRepository;
   const knowledgeRepo = config.knowledgeRepository;
+  const embeddingClient = config.embeddingClient ?? config.pipelineConfig.embeddingClient;
   const domainConfig = config.pipelineConfig.domainConfig;
 
   return {
@@ -175,12 +213,17 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
         classifierResult: result.classifierOutput,
       });
 
-      await persistKnowledgeEntry(knowledgeRepo, result, session.id, turn.id ?? '', input.content);
-
-      log.info(
-        { sessionId: session.id, completenessScore, turnNumber: 1 },
-        'Session started',
+      await persistKnowledgeEntry(
+        knowledgeRepo,
+        embeddingClient,
+        domainConfig.name,
+        result,
+        session.id,
+        turn.id ?? '',
+        input.content,
       );
+
+      log.info({ sessionId: session.id, completenessScore, turnNumber: 1 }, 'Session started');
 
       return buildSessionResponse(session.id, result, completenessScore, 1);
     },
@@ -252,15 +295,22 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
       await sessionRepo.update(sessionId, {
         status: 'active',
         currentEntry: isTopicChange ? entry : (entry ?? session.currentEntry),
-        classifierResult: isTopicChange ? result.classifierOutput : (session.classifierResult ?? result.classifierOutput),
+        classifierResult: isTopicChange
+          ? result.classifierOutput
+          : (session.classifierResult ?? result.classifierOutput),
       });
 
-      await persistKnowledgeEntry(knowledgeRepo, result, sessionId, turn.id ?? '', input.content);
-
-      log.info(
-        { sessionId, completenessScore, turnNumber, isTopicChange },
-        'Session continued',
+      await persistKnowledgeEntry(
+        knowledgeRepo,
+        embeddingClient,
+        domainConfig.name,
+        result,
+        sessionId,
+        turn.id ?? '',
+        input.content,
       );
+
+      log.info({ sessionId, completenessScore, turnNumber, isTopicChange }, 'Session continued');
 
       return buildSessionResponse(sessionId, result, completenessScore, turnNumber);
     },

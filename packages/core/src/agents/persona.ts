@@ -25,6 +25,10 @@ export function createPersonaNode(
         ? allGaps.map((g) => `- ${g.field} (${g.priority}): ${g.description}`).join('\n')
         : 'No gaps identified.';
 
+    const contextSummary = state.contextDispatcherOutput?.result.contextSummary ?? '';
+    const hasRetrievedContext =
+      (state.contextDispatcherOutput?.result.relevantContext.length ?? 0) > 0;
+
     let followUpContext = '';
     if (state.turnContext?.isFollowUp) {
       const previousQuestions = state.turnContext.askedQuestions;
@@ -54,6 +58,18 @@ ${personaConfig.addressForm ? `- Address form: ${personaConfig.addressForm}` : '
 
 The following gaps were identified in the user's input:
 ${gapSummary}
+${
+  hasRetrievedContext
+    ? `
+## Context from Previous Knowledge
+${contextSummary}
+
+You can reference this knowledge to build on what the user has already shared.
+For example: "Du hast vorhin von X erzählt — wie hängt das mit Y zusammen?"
+Do NOT repeat information back to the user. Use it to ask deeper, connected questions.
+`
+    : ''
+}
 ${followUpContext}
 Generate a SHORT, natural conversational response (1-3 sentences maximum). You are having a real conversation, not conducting an interview.
 

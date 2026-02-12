@@ -14,6 +14,7 @@ function createTestEntryInput(
     suggestedCategoryLabel: 'History & Heritage',
     topicKeywords: ['church', 'medieval'],
     rawInput: 'The old church was built in 1450',
+    domainSchemaId: 'test-domain',
     title: 'Old Church Construction',
     content: 'The old church in the village was built in 1450.',
     source: { type: 'text' },
@@ -114,9 +115,7 @@ describe('FirestoreKnowledgeRepository (integration)', () => {
   });
 
   it('should update entry status and category (migration)', async () => {
-    const entry = await repo.create(
-      createTestEntryInput({ categoryId: '_uncategorized' }),
-    );
+    const entry = await repo.create(createTestEntryInput({ categoryId: '_uncategorized' }));
 
     await repo.update(entry.id, {
       categoryId: 'history',

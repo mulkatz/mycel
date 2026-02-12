@@ -2,6 +2,8 @@ import { resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { loadConfig } from '@mycel/schemas/src/config-loader.js';
 import { createLlmClient } from '@mycel/core/src/llm/llm-client.js';
+import { createVertexEmbeddingClient } from '@mycel/core/src/embedding/vertex-embedding-client.js';
+import { createMockEmbeddingClient } from '@mycel/core/src/embedding/mock-embedding-client.js';
 import { createSessionManager } from '@mycel/core/src/session/session-manager.js';
 import { createInMemorySessionRepository } from '@mycel/core/src/repositories/in-memory-session.repository.js';
 import { createInMemoryKnowledgeRepository } from '@mycel/core/src/repositories/in-memory-knowledge.repository.js';
@@ -96,6 +98,9 @@ async function main(): Promise<void> {
 
   const config = await loadConfig(configDir);
   const llmClient = await createLlmClient();
+  const embeddingClient = process.env['MYCEL_MOCK_LLM'] === 'true'
+    ? createMockEmbeddingClient()
+    : createVertexEmbeddingClient();
 
   const sessionManager = createSessionManager({
     pipelineConfig: {
@@ -105,6 +110,7 @@ async function main(): Promise<void> {
     },
     sessionRepository,
     knowledgeRepository,
+    embeddingClient,
   });
 
   const rl = createInterface({

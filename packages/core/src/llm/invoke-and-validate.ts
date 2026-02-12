@@ -61,9 +61,7 @@ export async function invokeAndValidate<T extends z.ZodTypeAny>(
       return result.data;
     }
 
-    lastErrors = result.error.errors.map(
-      (e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`,
-    );
+    lastErrors = result.error.errors.map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`);
 
     log.warn(
       { agentName, attempt: attempt + 1, errors: lastErrors },

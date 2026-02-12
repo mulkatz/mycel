@@ -3,6 +3,7 @@ import type { SessionRepository } from '@mycel/core/src/repositories/session.rep
 import type { KnowledgeRepository } from '@mycel/core/src/repositories/knowledge.repository.js';
 import type { SchemaRepository } from '@mycel/core/src/repositories/schema.repository.js';
 import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
+import type { EmbeddingClient } from '@mycel/core/src/embedding/embedding-client.js';
 import { createSessionManager } from '@mycel/core/src/session/session-manager.js';
 import { SessionError } from '@mycel/shared/src/utils/errors.js';
 import type { AppEnv } from '../types.js';
@@ -13,6 +14,7 @@ export interface SessionRouteDeps {
   readonly knowledgeRepository: KnowledgeRepository;
   readonly schemaRepository: SchemaRepository;
   readonly llmClient: LlmClient;
+  readonly embeddingClient?: EmbeddingClient;
 }
 
 export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
@@ -53,6 +55,7 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
       },
       sessionRepository: deps.sessionRepository,
       knowledgeRepository: deps.knowledgeRepository,
+      embeddingClient: deps.embeddingClient,
     });
 
     const result = await sessionManager.initSession({ source: 'api' });
@@ -98,6 +101,7 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
       },
       sessionRepository: deps.sessionRepository,
       knowledgeRepository: deps.knowledgeRepository,
+      embeddingClient: deps.embeddingClient,
     });
 
     const isFollowUp = session.turns.length > 0;
@@ -163,6 +167,7 @@ export function createSessionRoutes(deps: SessionRouteDeps): Hono<AppEnv> {
       },
       sessionRepository: deps.sessionRepository,
       knowledgeRepository: deps.knowledgeRepository,
+      embeddingClient: deps.embeddingClient,
     });
 
     const ended = await sessionManager.endSession(sessionId);

@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { createInMemoryKnowledgeRepository } from './in-memory-knowledge.repository.js';
+import { createMockEmbeddingClient } from '../embedding/mock-embedding-client.js';
 import type { CreateKnowledgeEntryInput } from './knowledge.repository.js';
 
-function createTestEntryInput(overrides: Partial<CreateKnowledgeEntryInput> = {}): CreateKnowledgeEntryInput {
+function createTestEntryInput(
+  overrides: Partial<CreateKnowledgeEntryInput> = {},
+): CreateKnowledgeEntryInput {
   return {
     sessionId: 'session-1',
     turnId: 'turn-1',
@@ -11,6 +14,7 @@ function createTestEntryInput(overrides: Partial<CreateKnowledgeEntryInput> = {}
     suggestedCategoryLabel: 'History & Heritage',
     topicKeywords: ['church', 'medieval'],
     rawInput: 'The old church was built in 1450',
+    domainSchemaId: 'test-domain',
     title: 'Old Church Construction',
     content: 'The old church in the village was built in 1450.',
     source: { type: 'text' },
@@ -77,7 +81,11 @@ describe('createInMemoryKnowledgeRepository', () => {
     await repo.create(createTestEntryInput({ categoryId: '_uncategorized' }));
 
     // Migrate one entry — it should no longer appear in uncategorized
-    await repo.update(entry1.id, { status: 'migrated', categoryId: 'history', migratedFrom: '_uncategorized' });
+    await repo.update(entry1.id, {
+      status: 'migrated',
+      categoryId: 'history',
+      migratedFrom: '_uncategorized',
+    });
 
     const results = await repo.getUncategorized();
     expect(results).toHaveLength(1);
@@ -125,8 +133,119 @@ describe('createInMemoryKnowledgeRepository', () => {
 
   it('should throw when updating a nonexistent entry', async () => {
     const repo = createInMemoryKnowledgeRepository();
-    await expect(
-      repo.update('nonexistent', { status: 'confirmed' }),
-    ).rejects.toThrow('Knowledge entry not found');
+    await expect(repo.update('nonexistent', { status: 'confirmed' })).rejects.toThrow(
+      'Knowledge entry not found',
+    );
+  });
+
+  describe('searchSimilar', () => {
+    it('should return entries with similar embeddings', async () => {
+      const repo = createInMemoryKnowledgeRepository();
+      const embeddingClient = createMockEmbeddingClient();
+
+      const embedding = await embeddingClient.generateEmbedding('church history');
+      await repo.create(
+        createTestEntryInput({
+          domainSchemaId: 'community',
+          embedding,
+          embeddingModel: 'test-model',
+        }),
+      );
+
+      // Search with the same embedding — should find it
+      const results = await repo.searchSimilar({
+        domainSchemaId: 'community',
+        embedding,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      expect(results[0].score).toBeCloseTo(1.0, 5);
+    });
+
+    it('should filter by domainSchemaId', async () => {
+      const repo = createInMemoryKnowledgeRepository();
+      const embedding = new Array(768).fill(0.1);
+
+      await repo.create(createTestEntryInput({ domainSchemaId: 'domain-a', embedding }));
+      await repo.create(createTestEntryInput({ domainSchemaId: 'domain-b', embedding }));
+
+      const results = await repo.searchSimilar({
+        domainSchemaId: 'domain-a',
+        embedding,
+      });
+
+      expect(results).toHaveLength(1);
+    });
+
+    it('should exclude entries from specified session', async () => {
+      const repo = createInMemoryKnowledgeRepository();
+      const embedding = new Array(768).fill(0.1);
+
+      await repo.create(
+        createTestEntryInput({ sessionId: 'session-1', domainSchemaId: 'community', embedding }),
+      );
+      await repo.create(
+        createTestEntryInput({ sessionId: 'session-2', domainSchemaId: 'community', embedding }),
+      );
+
+      const results = await repo.searchSimilar({
+        domainSchemaId: 'community',
+        embedding,
+        excludeSessionId: 'session-1',
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0].entry.sessionId).toBe('session-2');
+    });
+
+    it('should respect limit parameter', async () => {
+      const repo = createInMemoryKnowledgeRepository();
+      const embedding = new Array(768).fill(0.1);
+
+      for (let i = 0; i < 10; i++) {
+        await repo.create(
+          createTestEntryInput({
+            sessionId: `session-${String(i)}`,
+            domainSchemaId: 'community',
+            embedding,
+          }),
+        );
+      }
+
+      const results = await repo.searchSimilar({
+        domainSchemaId: 'community',
+        embedding,
+        limit: 3,
+      });
+
+      expect(results).toHaveLength(3);
+    });
+
+    it('should skip entries without embeddings', async () => {
+      const repo = createInMemoryKnowledgeRepository();
+      const embedding = new Array(768).fill(0.1);
+
+      await repo.create(createTestEntryInput({ domainSchemaId: 'community' })); // no embedding
+      await repo.create(createTestEntryInput({ domainSchemaId: 'community', embedding }));
+
+      const results = await repo.searchSimilar({
+        domainSchemaId: 'community',
+        embedding,
+      });
+
+      expect(results).toHaveLength(1);
+    });
+
+    it('should return empty when no entries match', async () => {
+      const repo = createInMemoryKnowledgeRepository();
+      const embedding = new Array(768).fill(0.1);
+
+      const results = await repo.searchSimilar({
+        domainSchemaId: 'nonexistent',
+        embedding,
+      });
+
+      expect(results).toEqual([]);
+    });
   });
 });

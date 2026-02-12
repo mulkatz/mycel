@@ -44,7 +44,9 @@ export function createInMemorySessionRepository(): SessionRepository {
         ...session,
         ...(updates.status !== undefined && { status: updates.status }),
         ...(updates.currentEntry !== undefined && { currentEntry: updates.currentEntry }),
-        ...(updates.classifierResult !== undefined && { classifierResult: updates.classifierResult }),
+        ...(updates.classifierResult !== undefined && {
+          classifierResult: updates.classifierResult,
+        }),
         updatedAt: updates.updatedAt ?? new Date(),
       };
       sessions.set(id, updated);

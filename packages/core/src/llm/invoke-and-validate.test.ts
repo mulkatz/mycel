@@ -21,9 +21,7 @@ function createMockClient(responses: string[]): LlmClient {
 }
 
 function mockCalls(client: LlmClient): Array<[{ userMessage: string }]> {
-  return (client.invoke as ReturnType<typeof vi.fn>).mock.calls as Array<
-    [{ userMessage: string }]
-  >;
+  return (client.invoke as ReturnType<typeof vi.fn>).mock.calls as Array<[{ userMessage: string }]>;
 }
 
 function callCount(client: LlmClient): number {
@@ -51,9 +49,7 @@ describe('invokeAndValidate', () => {
   });
 
   it('should handle JSON wrapped in markdown code blocks', async () => {
-    const client = createMockClient([
-      '```json\n{"name": "test", "value": 42}\n```',
-    ]);
+    const client = createMockClient(['```json\n{"name": "test", "value": 42}\n```']);
 
     const result = await invokeAndValidate({
       llmClient: client,

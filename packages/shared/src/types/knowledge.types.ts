@@ -24,6 +24,12 @@ export interface KnowledgeEntry {
   readonly status?: KnowledgeEntryStatus;
   readonly migratedFrom?: string;
   readonly migratedAt?: Date;
+  readonly domainSchemaId?: string;
+
+  // Embedding fields (RAG foundation)
+  readonly embedding?: readonly number[];
+  readonly embeddingModel?: string;
+  readonly embeddingGeneratedAt?: Date;
 }
 
 export interface KnowledgeFollowUp {

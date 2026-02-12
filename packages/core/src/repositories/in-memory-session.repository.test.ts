@@ -125,15 +125,15 @@ describe('createInMemorySessionRepository', () => {
 
   it('should throw when adding turn to nonexistent session', async () => {
     const repo = createInMemorySessionRepository();
-    await expect(
-      repo.addTurn('nonexistent', createTestTurnInput(1)),
-    ).rejects.toThrow('Session not found');
+    await expect(repo.addTurn('nonexistent', createTestTurnInput(1))).rejects.toThrow(
+      'Session not found',
+    );
   });
 
   it('should throw when updating a nonexistent session', async () => {
     const repo = createInMemorySessionRepository();
-    await expect(
-      repo.update('nonexistent', { status: 'complete' }),
-    ).rejects.toThrow('Session not found');
+    await expect(repo.update('nonexistent', { status: 'complete' })).rejects.toThrow(
+      'Session not found',
+    );
   });
 });

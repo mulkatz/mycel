@@ -67,7 +67,8 @@ function createMockResponse(systemPrompt: string, userMessage: string): string {
           'Where exactly was this?',
           'Is this something that happens regularly here?',
         ],
-        reasoning: 'The input is uncategorized. Asking exploratory questions to understand the topic.',
+        reasoning:
+          'The input is uncategorized. Asking exploratory questions to understand the topic.',
       });
     }
 
@@ -80,9 +81,7 @@ function createMockResponse(systemPrompt: string, userMessage: string): string {
             priority: 'medium',
           },
         ],
-        followUpQuestions: [
-          'Do you have any sources or references for this information?',
-        ],
+        followUpQuestions: ['Do you have any sources or references for this information?'],
         reasoning: 'Period has been provided. Only sources remain missing.',
       });
     }
@@ -113,9 +112,7 @@ function createMockResponse(systemPrompt: string, userMessage: string): string {
     if (isFollowUp) {
       return JSON.stringify({
         response: 'Spannend! Gibt es dazu vielleicht schriftliche Quellen oder Aufzeichnungen?',
-        followUpQuestions: [
-          'Do you have any written sources or references for this?',
-        ],
+        followUpQuestions: ['Do you have any written sources or references for this?'],
       });
     }
     return JSON.stringify({
@@ -268,10 +265,21 @@ function isTransientError(error: unknown): boolean {
 
   const message = error.message.toLowerCase();
   const transientPatterns = [
-    '429', 'rate limit', 'too many requests',
-    '500', '502', '503', 'internal server error', 'bad gateway', 'service unavailable',
-    'econnreset', 'etimedout', 'timeout', 'network',
-    'socket hang up', 'econnrefused',
+    '429',
+    'rate limit',
+    'too many requests',
+    '500',
+    '502',
+    '503',
+    'internal server error',
+    'bad gateway',
+    'service unavailable',
+    'econnreset',
+    'etimedout',
+    'timeout',
+    'network',
+    'socket hang up',
+    'econnrefused',
   ];
 
   return transientPatterns.some((pattern) => message.includes(pattern));
