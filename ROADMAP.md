@@ -25,12 +25,11 @@ Before starting any task from the backlog:
 - [x] Known issues fix (intent-aware pipeline routing, completeness score overhaul, proactive questions, graceful "don't know" handling, Zod validation cleanup)
 - [x] Document Generator (ADR-005: async Markdown documentation from Knowledge Entries — Heimatbuch-style prose, chapter structure, gap hints)
 - [x] Schema Bootstrap via Web Search (ADR-010: DomainBehaviorConfig presets, Google Search grounding via @google/genai, proposal/review workflow, hybrid mode)
+- [x] Schema Evolution + Web Enrichment (ADR-011, ADR-012: pattern detection via clustering, evolution proposals with auto-apply, field stats tracking, async claim verification, search caching, enrichment markers in context/documents)
 
 ## In Progress
 
 ## Backlog (ordered by priority)
-- [ ] Dynamic schema evolution (schemas emerge from conversation, no predefined categories required)
-- [ ] Web Search agent (autonomous research during conversation, validate user claims, enrich follow-up questions)
 - [ ] Audio ingestion (Speech-to-Text via Vertex AI → pipeline)
 - [ ] Image ingestion (Vision API → pipeline)
 - [ ] Authentication and multi-tenancy
