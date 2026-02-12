@@ -148,6 +148,25 @@ describe('Schema Generator API Routes', () => {
 
       expect(res.status).toBe(400);
     });
+
+    it('should return 400 for full config with schemaCreation manual', async () => {
+      const res = await app.request(
+        '/domains/generate',
+        jsonPost('/domains/generate', {
+          description: 'A village website for Naugarten, Brandenburg',
+          config: {
+            schemaCreation: 'manual',
+            schemaEvolution: 'fixed',
+            webSearch: 'disabled',
+            knowledgeValidation: 'trust_user',
+            proactiveQuestioning: 'gentle',
+            documentGeneration: 'manual',
+          },
+        }),
+      );
+
+      expect(res.status).toBe(400);
+    });
   });
 
   describe('POST /domains/proposals/:proposalId/review', () => {

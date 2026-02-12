@@ -14,7 +14,10 @@ const GenerateSchemaRequestSchema = z.object({
   config: z
     .union([
       z.enum(['full_auto', 'balanced']),
-      DomainBehaviorConfigSchema,
+      DomainBehaviorConfigSchema.refine(
+        (c) => c.schemaCreation !== 'manual',
+        { message: 'Manual schema creation mode cannot be used with /generate' },
+      ),
     ])
     .optional(),
   partialSchema: z

@@ -24,6 +24,7 @@ Before starting any task from the backlog:
 - [x] Cloud Run deployment (Dockerfile, Artifact Registry push, Terraform Cloud Run module, deploy script, public dev access)
 - [x] Known issues fix (intent-aware pipeline routing, completeness score overhaul, proactive questions, graceful "don't know" handling, Zod validation cleanup)
 - [x] Document Generator (ADR-005: async Markdown documentation from Knowledge Entries — Heimatbuch-style prose, chapter structure, gap hints)
+- [x] Schema Bootstrap via Web Search (ADR-010: DomainBehaviorConfig presets, Google Search grounding via @google/genai, proposal/review workflow, hybrid mode)
 
 ## In Progress
 
