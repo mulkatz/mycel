@@ -47,7 +47,7 @@ Mycel separates three concerns:
 2. **Domain Schema** – Defines *what* knowledge to capture: categories, required fields, ingestion modalities.
 3. **Persona Schema** – Defines *how* to communicate: tone, formality, follow-up behavior.
 
-A deployment is fully configured by providing a Domain Schema and a Persona Schema. The engine itself never contains domain-specific logic.
+A deployment is fully configured by providing a Domain Schema and a Persona Schema. The engine itself never contains domain-specific logic. The same engine can power a village knowledge base, a biography project, or any other knowledge collection use case.
 
 ### Multi-Agent System
 
@@ -55,22 +55,33 @@ Instead of a single monolithic prompt, Mycel uses specialized agents:
 
 | Agent              | Responsibility                                                  | LLM Model     |
 | ------------------ | --------------------------------------------------------------- | -------------- |
-| Classifier         | Categorizes input into domain categories or `_uncategorized`    | Gemini Flash   |
+| Classifier         | Categorizes input into domain categories or `_uncategorized`. Detects topic changes within a session. | Gemini Flash   |
 | Context Dispatcher | Retrieves relevant existing knowledge (RAG)                     | –              |
 | Gap-Reasoning      | Identifies missing information and generates follow-up questions| Gemini Pro     |
-| Persona            | Formulates the response in the configured persona style         | Gemini Flash   |
+| Persona            | Formulates a short, natural conversational response with at most one follow-up question | Gemini Flash   |
 | Structuring        | Extracts structured data from the conversation                  | Gemini Pro     |
 
 All agents produce Zod-validated JSON output. Prompts are tuned to handle malformed responses (markdown-wrapped JSON, retries on parse failure).
+
+### Conversation Design
+
+Mycel prioritizes natural conversation over systematic information gathering. Key principles:
+
+- **The user leads.** The system follows the user's train of thought, never forces a topic or insists on missing fields. If the user says "I don't know", the system moves on gracefully.
+- **Topic changes are welcome.** The Classifier runs on every turn and detects when the user switches subjects. A topic change finalizes the current knowledge entry and starts a new one — no knowledge is lost.
+- **Short, curious responses.** The Persona generates 1–3 sentences with genuine interest and at most one naturally embedded follow-up question. No echoing, no lists of questions.
+- **The user decides when to stop.** There is no hard turn limit. Completeness is tracked as an advisory metric but never terminates the conversation. The session ends only when the user signals they're done.
 
 ### Session Management
 
 The Session Manager orchestrates multi-turn conversations:
 
 - Each session references a Domain Schema and Persona Schema
+- The Classifier runs on every turn, receiving session context (active category, last question asked) to distinguish "I don't know" responses from actual topic changes
+- When a topic change is detected, the current knowledge entry is finalized and a new one is started
 - Conversation state accumulates across turns (previous turns inform gap analysis)
 - Sessions have a lifecycle: `active` → `completed` | `abandoned`
-- Completeness is evaluated after each turn based on configurable thresholds (`autoCompleteThreshold`, `maxTurns`)
+- Completeness is evaluated after each turn as an advisory metric — it does not control conversation flow
 
 Individual turns are stored as a subcollection, keeping session documents lightweight while supporting unbounded conversation length.
 
@@ -83,7 +94,7 @@ The system does not force knowledge into rigid categories. Key principles:
 - **Migration-ready lifecycle**: Entries have a `status` field (`draft` → `confirmed` → `migrated`) to support future re-classification of `_uncategorized` entries into proper categories.
 - **Adaptive questioning**: The Gap-Reasoning agent asks only what the user is likely to know, not a rigid list of missing fields.
 
-The system learns its own schema over time rather than relying on predefined categories alone.
+The system learns its own schema over time rather than relying on predefined categories alone. Future iterations will support fully dynamic schemas that emerge entirely from conversation, with no predefined categories required.
 
 ### Ingestion Pipeline
 
@@ -190,17 +201,20 @@ All infrastructure is provisioned via Terraform (`infra/terraform/`), with per-e
 
 ## Current State
 
-| Component               | Status       |
-| ----------------------- | ------------ |
-| Agent Pipeline           | ✅ Complete  |
-| Multi-Turn Sessions      | ✅ Complete  |
-| Real LLM (Vertex AI)    | ✅ Complete  |
-| Adaptive Schema (ADR-004)| ✅ Complete  |
-| Persistence (Firestore)  | ✅ Complete  |
-| Terraform (Dev)          | ✅ Complete  |
-| API Layer (Cloud Run)    | ⬚ Planned   |
-| RAG Foundation           | ⬚ Planned   |
-| Audio Ingestion          | ⬚ Planned   |
-| Image Ingestion          | ⬚ Planned   |
-| Auth & Multi-Tenancy     | ⬚ Planned   |
-| Monitoring               | ⬚ Planned   |
+| Component                | Status       |
+| ------------------------ | ------------ |
+| Agent Pipeline            | ✅ Complete  |
+| Multi-Turn Sessions       | ✅ Complete  |
+| Real LLM (Vertex AI)     | ✅ Complete  |
+| Adaptive Schema (ADR-004) | ✅ Complete  |
+| Persistence (Firestore)   | ✅ Complete  |
+| Terraform (Dev)           | ✅ Complete  |
+| Conversation Quality      | ✅ Complete  |
+| API Layer (Cloud Run)     | ⬚ Planned   |
+| RAG Foundation            | ⬚ Planned   |
+| Dynamic Schema Evolution  | ⬚ Planned   |
+| Web Search Agent          | ⬚ Planned   |
+| Audio Ingestion           | ⬚ Planned   |
+| Image Ingestion           | ⬚ Planned   |
+| Auth & Multi-Tenancy      | ⬚ Planned   |
+| Monitoring                | ⬚ Planned   |
