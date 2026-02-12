@@ -24,7 +24,9 @@ Before starting any task from the backlog:
 
 ## Backlog (ordered by priority)
 - [ ] API layer (Cloud Run HTTP entrypoint, request/response contracts)
-- [ ] RAG foundation (embedding generation, Vertex AI Vector Search, Context Dispatcher implementation)
+- [ ] RAG foundation (embedding generation, Vertex AI Vector Search, Context Dispatcher)
+- [ ] Dynamic schema evolution (schemas emerge from conversation, no predefined categories required)
+- [ ] Web Search agent (autonomous research during conversation, validate user claims, enrich follow-up questions)
 - [ ] Audio ingestion (Speech-to-Text via Vertex AI → pipeline)
 - [ ] Image ingestion (Vision API → pipeline)
 - [ ] Authentication and multi-tenancy
