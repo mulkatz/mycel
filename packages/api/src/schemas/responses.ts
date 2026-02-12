@@ -162,8 +162,6 @@ export const SchemaProposalResponseSchema = z
   .object({
     id: z.string(),
     status: z.string(),
-    domain: z.record(z.unknown()).optional(),
-    behavior: z.record(z.unknown()).optional(),
     reasoning: z.string().optional(),
     sources: z.array(z.string()).optional(),
     createdAt: z.string().optional(),
@@ -225,25 +223,27 @@ export const ClusterMetadataSchema = z
   .nullable()
   .optional();
 
-export const EvolutionProposalDetailSchema = z.object({
-  id: z.string(),
-  type: z.string(),
-  description: z.string(),
-  confidence: z.number(),
-  status: z.string(),
-  newCategory: NewCategorySchema,
-  newField: NewFieldSchema,
-  changePriority: ChangePrioritySchema,
-  clusterMetadata: ClusterMetadataSchema,
-  createdAt: z.string(),
-  reviewedAt: z.string().nullable().optional(),
-  appliedAt: z.string().nullable().optional(),
-});
+export const EvolutionProposalDetailSchema = z
+  .object({
+    id: z.string(),
+    type: z.string(),
+    description: z.string(),
+    confidence: z.number(),
+    status: z.string(),
+    newCategory: NewCategorySchema,
+    newField: NewFieldSchema,
+    changePriority: ChangePrioritySchema,
+    clusterMetadata: ClusterMetadataSchema,
+    createdAt: z.string(),
+    reviewedAt: z.string().nullable().optional(),
+    appliedAt: z.string().nullable().optional(),
+  })
+  .openapi('EvolutionProposalDetail');
 
 export const EvolutionProposalsResponseSchema = z
   .object({
     domainSchemaId: z.string(),
-    proposals: z.array(EvolutionProposalDetailSchema.openapi('EvolutionProposalDetail')),
+    proposals: z.array(EvolutionProposalDetailSchema),
   })
   .openapi('EvolutionProposalsResponse');
 

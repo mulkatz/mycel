@@ -19,10 +19,12 @@ const DomainAndProposalParamSchema = z.object({
   proposalId: z.string().min(1),
 });
 
-const EvolutionReviewRequestSchema = z.object({
-  decision: z.enum(['approve', 'approve_with_changes', 'reject']),
-  feedback: z.string().optional(),
-});
+const EvolutionReviewRequestSchema = z
+  .object({
+    decision: z.enum(['approve', 'approve_with_changes', 'reject']),
+    feedback: z.string().optional(),
+  })
+  .openapi('EvolutionReviewRequest');
 
 const analyzeRoute = createRoute({
   method: 'post',
@@ -38,6 +40,14 @@ const analyzeRoute = createRoute({
       content: {
         'application/json': {
           schema: EvolutionAnalyzeResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Domain schema not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
         },
       },
     },
@@ -58,6 +68,14 @@ const listProposalsRoute = createRoute({
       content: {
         'application/json': {
           schema: EvolutionProposalsResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Domain schema not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
         },
       },
     },
@@ -141,6 +159,14 @@ const getStatsRoute = createRoute({
       content: {
         'application/json': {
           schema: EvolutionStatsResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Domain schema not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
         },
       },
     },

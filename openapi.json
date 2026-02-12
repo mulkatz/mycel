@@ -80,6 +80,31 @@
           "requestId"
         ]
       },
+      "CreateSessionRequest": {
+        "type": "object",
+        "properties": {
+          "domainSchemaId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "personaSchemaId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "domainSchemaId",
+          "personaSchemaId"
+        ]
+      },
       "TurnResponse": {
         "type": "object",
         "properties": {
@@ -105,6 +130,18 @@
           "response",
           "knowledgeExtracted",
           "status"
+        ]
+      },
+      "CreateTurnRequest": {
+        "type": "object",
+        "properties": {
+          "userInput": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "userInput"
         ]
       },
       "SessionDetailResponse": {
@@ -400,6 +437,138 @@
           "reasoning"
         ]
       },
+      "GenerateSchemaRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 10
+          },
+          "language": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 5
+          },
+          "config": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "full_auto",
+                  "balanced"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "schemaCreation": {
+                    "type": "string",
+                    "enum": [
+                      "manual",
+                      "web_research",
+                      "hybrid"
+                    ]
+                  },
+                  "schemaEvolution": {
+                    "type": "string",
+                    "enum": [
+                      "fixed",
+                      "suggest",
+                      "auto"
+                    ]
+                  },
+                  "webSearch": {
+                    "type": "string",
+                    "enum": [
+                      "disabled",
+                      "bootstrap_only",
+                      "enrichment",
+                      "full"
+                    ]
+                  },
+                  "knowledgeValidation": {
+                    "type": "string",
+                    "enum": [
+                      "trust_user",
+                      "flag_conflicts",
+                      "verify"
+                    ]
+                  },
+                  "proactiveQuestioning": {
+                    "type": "string",
+                    "enum": [
+                      "passive",
+                      "gentle",
+                      "active"
+                    ]
+                  },
+                  "documentGeneration": {
+                    "type": "string",
+                    "enum": [
+                      "disabled",
+                      "manual",
+                      "on_session_end",
+                      "threshold"
+                    ]
+                  }
+                },
+                "required": [
+                  "schemaCreation",
+                  "schemaEvolution",
+                  "webSearch",
+                  "knowledgeValidation",
+                  "proactiveQuestioning",
+                  "documentGeneration"
+                ]
+              }
+            ]
+          },
+          "partialSchema": {
+            "type": "object",
+            "properties": {
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "requiredFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "optionalFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "description"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "description"
+        ]
+      },
       "SchemaReviewResponse": {
         "type": "object",
         "properties": {
@@ -417,6 +586,73 @@
           "status"
         ]
       },
+      "SchemaReviewRequest": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "approve_with_changes",
+              "reject"
+            ]
+          },
+          "modifications": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": {
+                "type": "string"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "requiredFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "optionalFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "description"
+                  ]
+                }
+              }
+            }
+          },
+          "feedback": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
       "SchemaProposalResponse": {
         "type": "object",
         "properties": {
@@ -425,14 +661,6 @@
           },
           "status": {
             "type": "string"
-          },
-          "domain": {
-            "type": "object",
-            "additionalProperties": {}
-          },
-          "behavior": {
-            "type": "object",
-            "additionalProperties": {}
           },
           "reasoning": {
             "type": "string"
@@ -675,6 +903,25 @@
           "status"
         ]
       },
+      "EvolutionReviewRequest": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "approve_with_changes",
+              "reject"
+            ]
+          },
+          "feedback": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
       "EvolutionStatsResponse": {
         "type": "object",
         "properties": {
@@ -840,29 +1087,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "domainSchemaId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "personaSchemaId": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "metadata": {
-                    "type": "object",
-                    "properties": {
-                      "source": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "required": [
-                  "domainSchemaId",
-                  "personaSchemaId"
-                ]
+                "$ref": "#/components/schemas/CreateSessionRequest"
               }
             }
           }
@@ -922,16 +1147,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "userInput": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "required": [
-                  "userInput"
-                ]
+                "$ref": "#/components/schemas/CreateTurnRequest"
               }
             }
           }
@@ -949,6 +1165,16 @@
           },
           "400": {
             "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -987,6 +1213,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1015,6 +1251,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EndSessionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1205,136 +1451,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "type": "string",
-                    "minLength": 10
-                  },
-                  "language": {
-                    "type": "string",
-                    "minLength": 2,
-                    "maxLength": 5
-                  },
-                  "config": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "full_auto",
-                          "balanced"
-                        ]
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "schemaCreation": {
-                            "type": "string",
-                            "enum": [
-                              "manual",
-                              "web_research",
-                              "hybrid"
-                            ]
-                          },
-                          "schemaEvolution": {
-                            "type": "string",
-                            "enum": [
-                              "fixed",
-                              "suggest",
-                              "auto"
-                            ]
-                          },
-                          "webSearch": {
-                            "type": "string",
-                            "enum": [
-                              "disabled",
-                              "bootstrap_only",
-                              "enrichment",
-                              "full"
-                            ]
-                          },
-                          "knowledgeValidation": {
-                            "type": "string",
-                            "enum": [
-                              "trust_user",
-                              "flag_conflicts",
-                              "verify"
-                            ]
-                          },
-                          "proactiveQuestioning": {
-                            "type": "string",
-                            "enum": [
-                              "passive",
-                              "gentle",
-                              "active"
-                            ]
-                          },
-                          "documentGeneration": {
-                            "type": "string",
-                            "enum": [
-                              "disabled",
-                              "manual",
-                              "on_session_end",
-                              "threshold"
-                            ]
-                          }
-                        },
-                        "required": [
-                          "schemaCreation",
-                          "schemaEvolution",
-                          "webSearch",
-                          "knowledgeValidation",
-                          "proactiveQuestioning",
-                          "documentGeneration"
-                        ]
-                      }
-                    ]
-                  },
-                  "partialSchema": {
-                    "type": "object",
-                    "properties": {
-                      "categories": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "label": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "description": {
-                              "type": "string"
-                            },
-                            "requiredFields": {
-                              "type": "array",
-                              "items": {
-                                "type": "string"
-                              }
-                            },
-                            "optionalFields": {
-                              "type": "array",
-                              "items": {
-                                "type": "string"
-                              }
-                            }
-                          },
-                          "required": [
-                            "id",
-                            "label",
-                            "description"
-                          ]
-                        }
-                      }
-                    }
-                  }
-                },
-                "required": [
-                  "description"
-                ]
+                "$ref": "#/components/schemas/GenerateSchemaRequest"
               }
             }
           }
@@ -1384,71 +1501,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "decision": {
-                    "type": "string",
-                    "enum": [
-                      "approve",
-                      "approve_with_changes",
-                      "reject"
-                    ]
-                  },
-                  "modifications": {
-                    "type": "object",
-                    "properties": {
-                      "name": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "description": {
-                        "type": "string"
-                      },
-                      "categories": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "label": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "description": {
-                              "type": "string"
-                            },
-                            "requiredFields": {
-                              "type": "array",
-                              "items": {
-                                "type": "string"
-                              }
-                            },
-                            "optionalFields": {
-                              "type": "array",
-                              "items": {
-                                "type": "string"
-                              }
-                            }
-                          },
-                          "required": [
-                            "id",
-                            "label",
-                            "description"
-                          ]
-                        }
-                      }
-                    }
-                  },
-                  "feedback": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "decision"
-                ]
+                "$ref": "#/components/schemas/SchemaReviewRequest"
               }
             }
           }
@@ -1545,6 +1598,16 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Domain schema not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1573,6 +1636,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EvolutionProposalsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Domain schema not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1612,149 +1685,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "type": {
-                      "type": "string"
-                    },
-                    "description": {
-                      "type": "string"
-                    },
-                    "confidence": {
-                      "type": "number"
-                    },
-                    "status": {
-                      "type": "string"
-                    },
-                    "newCategory": {
-                      "type": [
-                        "object",
-                        "null"
-                      ],
-                      "properties": {
-                        "id": {
-                          "type": "string"
-                        },
-                        "label": {
-                          "type": "string"
-                        },
-                        "description": {
-                          "type": "string"
-                        },
-                        "suggestedFields": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "label",
-                        "description",
-                        "suggestedFields"
-                      ]
-                    },
-                    "newField": {
-                      "type": [
-                        "object",
-                        "null"
-                      ],
-                      "properties": {
-                        "targetCategoryId": {
-                          "type": "string"
-                        },
-                        "fieldName": {
-                          "type": "string"
-                        },
-                        "fieldType": {
-                          "type": "string",
-                          "enum": [
-                            "required",
-                            "optional"
-                          ]
-                        },
-                        "reasoning": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "targetCategoryId",
-                        "fieldName",
-                        "fieldType",
-                        "reasoning"
-                      ]
-                    },
-                    "changePriority": {
-                      "type": [
-                        "object",
-                        "null"
-                      ],
-                      "properties": {
-                        "targetCategoryId": {
-                          "type": "string"
-                        },
-                        "fieldName": {
-                          "type": "string"
-                        },
-                        "answerRate": {
-                          "type": "number"
-                        },
-                        "reasoning": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "targetCategoryId",
-                        "fieldName",
-                        "answerRate",
-                        "reasoning"
-                      ]
-                    },
-                    "clusterMetadata": {
-                      "type": [
-                        "object",
-                        "null"
-                      ],
-                      "properties": {
-                        "clusterSize": {
-                          "type": "number"
-                        },
-                        "sampleEntries": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        }
-                      }
-                    },
-                    "createdAt": {
-                      "type": "string"
-                    },
-                    "reviewedAt": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "appliedAt": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "type",
-                    "description",
-                    "confidence",
-                    "status",
-                    "createdAt"
-                  ]
+                  "$ref": "#/components/schemas/EvolutionProposalDetail"
                 }
               }
             }
@@ -1802,23 +1733,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "decision": {
-                    "type": "string",
-                    "enum": [
-                      "approve",
-                      "approve_with_changes",
-                      "reject"
-                    ]
-                  },
-                  "feedback": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "decision"
-                ]
+                "$ref": "#/components/schemas/EvolutionReviewRequest"
               }
             }
           }
@@ -1871,6 +1786,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EvolutionStatsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Domain schema not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }

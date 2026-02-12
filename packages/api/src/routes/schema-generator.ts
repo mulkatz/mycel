@@ -9,56 +9,60 @@ import {
   SchemaProposalResponseSchema,
 } from '../schemas/responses.js';
 
-const GenerateSchemaRequestSchema = z.object({
-  description: z.string().min(10),
-  language: z.string().min(2).max(5).optional(),
-  config: z
-    .union([
-      z.enum(['full_auto', 'balanced']),
-      DomainBehaviorConfigSchema.refine(
-        (c) => c.schemaCreation !== 'manual',
-        { message: 'Manual schema creation mode cannot be used with /generate' },
-      ),
-    ])
-    .optional(),
-  partialSchema: z
-    .object({
-      categories: z
-        .array(
-          z.object({
-            id: z.string().min(1),
-            label: z.string().min(1),
-            description: z.string(),
-            requiredFields: z.array(z.string()).optional(),
-            optionalFields: z.array(z.string()).optional(),
-          }),
-        )
-        .optional(),
-    })
-    .optional(),
-});
+const GenerateSchemaRequestSchema = z
+  .object({
+    description: z.string().min(10),
+    language: z.string().min(2).max(5).optional(),
+    config: z
+      .union([
+        z.enum(['full_auto', 'balanced']),
+        DomainBehaviorConfigSchema.refine(
+          (c) => c.schemaCreation !== 'manual',
+          { message: 'Manual schema creation mode cannot be used with /generate' },
+        ),
+      ])
+      .optional(),
+    partialSchema: z
+      .object({
+        categories: z
+          .array(
+            z.object({
+              id: z.string().min(1),
+              label: z.string().min(1),
+              description: z.string(),
+              requiredFields: z.array(z.string()).optional(),
+              optionalFields: z.array(z.string()).optional(),
+            }),
+          )
+          .optional(),
+      })
+      .optional(),
+  })
+  .openapi('GenerateSchemaRequest');
 
-const ReviewRequestSchema = z.object({
-  decision: z.enum(['approve', 'approve_with_changes', 'reject']),
-  modifications: z
-    .object({
-      name: z.string().min(1).optional(),
-      description: z.string().optional(),
-      categories: z
-        .array(
-          z.object({
-            id: z.string().min(1),
-            label: z.string().min(1),
-            description: z.string(),
-            requiredFields: z.array(z.string()).optional(),
-            optionalFields: z.array(z.string()).optional(),
-          }),
-        )
-        .optional(),
-    })
-    .optional(),
-  feedback: z.string().optional(),
-});
+const ReviewRequestSchema = z
+  .object({
+    decision: z.enum(['approve', 'approve_with_changes', 'reject']),
+    modifications: z
+      .object({
+        name: z.string().min(1).optional(),
+        description: z.string().optional(),
+        categories: z
+          .array(
+            z.object({
+              id: z.string().min(1),
+              label: z.string().min(1),
+              description: z.string(),
+              requiredFields: z.array(z.string()).optional(),
+              optionalFields: z.array(z.string()).optional(),
+            }),
+          )
+          .optional(),
+      })
+      .optional(),
+    feedback: z.string().optional(),
+  })
+  .openapi('SchemaReviewRequest');
 
 const generateSchemaRoute = createRoute({
   method: 'post',

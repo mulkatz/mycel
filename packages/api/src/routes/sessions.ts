@@ -91,6 +91,14 @@ const createTurnRoute = createRoute({
         },
       },
     },
+    404: {
+      description: 'Session not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
   },
 });
 
@@ -111,6 +119,14 @@ const getSessionRoute = createRoute({
         },
       },
     },
+    404: {
+      description: 'Session not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
   },
 });
 
@@ -128,6 +144,14 @@ const endSessionRoute = createRoute({
       content: {
         'application/json': {
           schema: EndSessionResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Session not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
         },
       },
     },
