@@ -150,6 +150,49 @@ describe('invokeAndValidate', () => {
     ).rejects.toThrow('test-agent returned invalid output after 1 attempts');
   });
 
+  it('should apply preprocess callback before Zod validation', async () => {
+    // LLM returns object missing the "value" field
+    const client = createMockClient([JSON.stringify({ name: 'test' })]);
+
+    const result = await invokeAndValidate({
+      llmClient: client,
+      request: baseRequest,
+      schema: TestSchema,
+      agentName: 'test-agent',
+      preprocess: (raw) => {
+        if (raw && typeof raw === 'object' && !('value' in raw)) {
+          (raw as Record<string, unknown>)['value'] = 99;
+        }
+      },
+    });
+
+    expect(result).toEqual({ name: 'test', value: 99 });
+    expect(callCount(client)).toBe(1); // No retry needed thanks to preprocess
+  });
+
+  it('should apply preprocess on every retry attempt', async () => {
+    // First call: invalid JSON. Second call: valid JSON missing "value"
+    const client = createMockClient([
+      'not json',
+      JSON.stringify({ name: 'fixed' }),
+    ]);
+
+    const result = await invokeAndValidate({
+      llmClient: client,
+      request: baseRequest,
+      schema: TestSchema,
+      agentName: 'test-agent',
+      preprocess: (raw) => {
+        if (raw && typeof raw === 'object' && !('value' in raw)) {
+          (raw as Record<string, unknown>)['value'] = 42;
+        }
+      },
+    });
+
+    expect(result).toEqual({ name: 'fixed', value: 42 });
+    expect(callCount(client)).toBe(2);
+  });
+
   it('should re-throw LlmError immediately without retrying', async () => {
     const llmError = new LlmError('Rate limit exceeded', true);
     const client: LlmClient = {

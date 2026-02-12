@@ -332,6 +332,32 @@ describe('SchemaGenerator review flow', () => {
     ).rejects.toThrow('already been reviewed');
   });
 
+  it('should reject approve_with_changes when modifications produce invalid schema', async () => {
+    const proposalRepo = createInMemorySchemaProposalRepository();
+
+    const generator = createSchemaGenerator({
+      llmClient: createMockLlm(),
+      webSearchClient: createMockWebSearch(),
+      proposalRepository: proposalRepo,
+      schemaRepository: createInMemorySchemaRepository(),
+    });
+
+    const generated = await generator.generate({ description: 'Test domain' });
+
+    await expect(
+      generator.reviewProposal(generated.proposalId, {
+        decision: 'approve_with_changes',
+        modifications: {
+          categories: [], // empty array violates min(1)
+        },
+      }),
+    ).rejects.toThrow('Modified schema is invalid');
+
+    // Proposal should still be pending
+    const proposal = await proposalRepo.getProposal(generated.proposalId);
+    expect(proposal?.status).toBe('pending');
+  });
+
   it('should retrieve a proposal by ID', async () => {
     const proposalRepo = createInMemorySchemaProposalRepository();
 

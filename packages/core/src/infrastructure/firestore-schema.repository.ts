@@ -101,16 +101,6 @@ export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository
 
     async saveDomainSchema(input: CreateDomainSchemaInput): Promise<PersistedDomainSchema> {
       const now = Timestamp.now();
-
-      if (input.isActive) {
-        const activeSnapshot = await domainRef.where('isActive', '==', true).get();
-        const batch = db.batch();
-        for (const doc of activeSnapshot.docs) {
-          batch.update(doc.ref, { isActive: false, updatedAt: now });
-        }
-        await batch.commit();
-      }
-
       const behavior = input.behavior ?? resolveBehaviorPreset('manual');
       const docData: DomainSchemaDocument = {
         name: input.name,
@@ -125,7 +115,19 @@ export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository
       };
 
       const docRef = domainRef.doc();
-      await docRef.set(docData);
+
+      if (input.isActive) {
+        // Use a transaction to atomically deactivate existing schemas and create the new one
+        await db.runTransaction(async (tx) => {
+          const activeSnapshot = await tx.get(domainRef.where('isActive', '==', true));
+          for (const doc of activeSnapshot.docs) {
+            tx.update(doc.ref, { isActive: false, updatedAt: now });
+          }
+          tx.set(docRef, docData);
+        });
+      } else {
+        await docRef.set(docData);
+      }
 
       return domainSchemaFromDoc(docRef.id, docData);
     },
@@ -160,16 +162,6 @@ export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository
 
     async savePersonaSchema(input: CreatePersonaSchemaInput): Promise<PersistedPersonaSchema> {
       const now = Timestamp.now();
-
-      if (input.isActive) {
-        const activeSnapshot = await personaRef.where('isActive', '==', true).get();
-        const batch = db.batch();
-        for (const doc of activeSnapshot.docs) {
-          batch.update(doc.ref, { isActive: false, updatedAt: now });
-        }
-        await batch.commit();
-      }
-
       const docData: PersonaSchemaDocument = {
         name: input.name,
         version: input.version,
@@ -180,7 +172,18 @@ export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository
       };
 
       const docRef = personaRef.doc();
-      await docRef.set(docData);
+
+      if (input.isActive) {
+        await db.runTransaction(async (tx) => {
+          const activeSnapshot = await tx.get(personaRef.where('isActive', '==', true));
+          for (const doc of activeSnapshot.docs) {
+            tx.update(doc.ref, { isActive: false, updatedAt: now });
+          }
+          tx.set(docRef, docData);
+        });
+      } else {
+        await docRef.set(docData);
+      }
 
       return personaSchemaFromDoc(docRef.id, docData);
     },

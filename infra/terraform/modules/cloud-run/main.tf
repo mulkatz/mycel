@@ -43,7 +43,7 @@ resource "google_cloud_run_v2_service" "mycel" {
       max_instance_count = var.max_instance_count
     }
 
-    timeout = "120s"
+    timeout = "300s"
   }
 }
 

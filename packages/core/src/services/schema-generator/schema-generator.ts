@@ -1,5 +1,6 @@
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { SchemaGenerationError } from '@mycel/shared/src/utils/errors.js';
+import { DomainSchema } from '@mycel/schemas/src/domain.schema.js';
 import type { DomainBehaviorConfig, BehaviorPreset } from '@mycel/schemas/src/domain-behavior.schema.js';
 import { resolveBehaviorPreset, BehaviorPresetSchema } from '@mycel/schemas/src/domain-behavior.schema.js';
 import type {
@@ -146,6 +147,14 @@ export function createSchemaGenerator(deps: SchemaGeneratorDeps): SchemaGenerato
           ...review.modifications,
           categories: review.modifications.categories ?? finalSchema.categories,
         };
+
+        const validation = DomainSchema.safeParse(finalSchema);
+        if (!validation.success) {
+          const errors = validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+          throw new SchemaGenerationError(
+            `Modified schema is invalid: ${errors.join(', ')}`,
+          );
+        }
       }
 
       // Save as active domain schema
