@@ -57,6 +57,16 @@ function createMockLlm(): { client: LlmClient; callArgs: Array<{ systemPrompt: s
       const hasSessionContext = prompt.includes('[session_context]');
       const userMsg = request.userMessage.toLowerCase();
 
+      // Greeting generation (no user input, new conversation)
+      if (prompt.includes('starting a new conversation') && prompt.includes('your persona')) {
+        return Promise.resolve({
+          content: JSON.stringify({
+            response: 'Hallo! Was kannst du mir erzählen?',
+            followUpQuestions: [],
+          }),
+        });
+      }
+
       // Classifier runs on every turn now
       if (prompt.includes('classifier')) {
         // Topic change detection for nature-related input
@@ -410,6 +420,35 @@ describe('SessionManager', () => {
     expect(entries[0].categoryId).toBe('history');
     expect(entries[0].sessionId).toBe(turn1.sessionId);
     expect(entries[0].status).toBe('draft');
+  });
+
+  it('should init a session with a greeting and no turns', async () => {
+    const { manager, sessionRepo } = createTestManager();
+
+    const result = await manager.initSession({ source: 'api' });
+
+    expect(result.sessionId).toBeTruthy();
+    expect(result.greeting).toBeTruthy();
+
+    const session = await sessionRepo.getSessionWithTurns(result.sessionId);
+    expect(session).not.toBeNull();
+    expect(session?.turns).toHaveLength(0);
+    expect(session?.status).toBe('active');
+  });
+
+  it('should handle continueSession after initSession (zero turns)', async () => {
+    const { manager } = createTestManager();
+
+    const init = await manager.initSession({ source: 'api' });
+
+    const turn1 = await manager.continueSession(init.sessionId, {
+      content: 'The old church was built in 1732.',
+      isFollowUpResponse: false,
+    });
+
+    expect(turn1.turnNumber).toBe(1);
+    expect(turn1.personaResponse).toBeTruthy();
+    expect(turn1.entry).toBeDefined();
   });
 
   it('should detect topic change and update classifierResult', async () => {

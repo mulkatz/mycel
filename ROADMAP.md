@@ -19,11 +19,11 @@ Before starting any task from the backlog:
 - [x] Adaptive Schema Evolution (ADR-004: `_uncategorized` fallback, exploratory gap-reasoning, suggestedCategoryLabel/topicKeywords)
 - [x] Persistence layer (Firestore Native Mode, Repository Pattern, emulator integration tests)
 - [x] Terraform deployment (dev environment on GCP: Firestore, Cloud Run, IAM, Artifact Registry)
+- [x] API layer (Cloud Run HTTP entrypoint, request/response contracts, proactive greeting)
 
 ## In Progress
 
 ## Backlog (ordered by priority)
-- [ ] API layer (Cloud Run HTTP entrypoint, request/response contracts)
 - [ ] RAG foundation (embedding generation, Vertex AI Vector Search, Context Dispatcher)
 - [ ] Dynamic schema evolution (schemas emerge from conversation, no predefined categories required)
 - [ ] Web Search agent (autonomous research during conversation, validate user claims, enrich follow-up questions)
@@ -31,3 +31,11 @@ Before starting any task from the backlog:
 - [ ] Image ingestion (Vision API → pipeline)
 - [ ] Authentication and multi-tenancy
 - [ ] Monitoring and observability
+
+## Known Issues (conversation quality, iterative improvement)
+- [ ] Completeness score is unreliable (100% for "hi", 0% for actual content)
+- [ ] System doesn't let go when user says "I don't know" repeatedly
+- [x] No proactive initial question based on domain schema (solved via API greeting)
+- [ ] Topic change from lake back to church instead of continuing lake topic
+- [ ] Zod validation warnings for suggestedCategoryLabel on non-uncategorized classifications
+- [ ] "ask me something" should trigger proactive domain-based questions

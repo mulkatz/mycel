@@ -16,6 +16,15 @@ export function createInMemorySchemaRepository(): SchemaRepository {
       return Promise.resolve(domainSchemas.get(id) ?? null);
     },
 
+    getDomainSchemaByName(name: string): Promise<PersistedDomainSchema | null> {
+      for (const schema of domainSchemas.values()) {
+        if (schema.name === name) {
+          return Promise.resolve(schema);
+        }
+      }
+      return Promise.resolve(null);
+    },
+
     getActiveDomainSchema(): Promise<PersistedDomainSchema | null> {
       for (const schema of domainSchemas.values()) {
         if (schema.isActive) {
@@ -50,6 +59,15 @@ export function createInMemorySchemaRepository(): SchemaRepository {
 
     getPersonaSchema(id: string): Promise<PersistedPersonaSchema | null> {
       return Promise.resolve(personaSchemas.get(id) ?? null);
+    },
+
+    getPersonaSchemaByName(name: string): Promise<PersistedPersonaSchema | null> {
+      for (const schema of personaSchemas.values()) {
+        if (schema.name === name) {
+          return Promise.resolve(schema);
+        }
+      }
+      return Promise.resolve(null);
     },
 
     getActivePersonaSchema(): Promise<PersistedPersonaSchema | null> {

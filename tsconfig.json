@@ -4,6 +4,7 @@
     { "path": "packages/shared" },
     { "path": "packages/schemas" },
     { "path": "packages/ingestion" },
-    { "path": "packages/core" }
+    { "path": "packages/core" },
+    { "path": "packages/api" }
   ]
 }

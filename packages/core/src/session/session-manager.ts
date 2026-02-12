@@ -12,6 +12,7 @@ import type { SessionRepository } from '../repositories/session.repository.js';
 import type { KnowledgeRepository, CreateKnowledgeEntryInput } from '../repositories/knowledge.repository.js';
 import { createPipeline } from '../orchestration/pipeline.js';
 import { calculateCompleteness } from './completeness.js';
+import { generateGreeting } from './greeting.js';
 import { SessionError } from '@mycel/shared/src/utils/errors.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 
@@ -23,7 +24,13 @@ export interface SessionManagerConfig {
   readonly knowledgeRepository?: KnowledgeRepository;
 }
 
+export interface InitSessionResult {
+  readonly sessionId: string;
+  readonly greeting: string;
+}
+
 export interface SessionManager {
+  initSession(metadata?: SessionMetadata): Promise<InitSessionResult>;
   startSession(input: TurnInput, metadata?: SessionMetadata): Promise<SessionResponse>;
   continueSession(sessionId: string, input: TurnInput): Promise<SessionResponse>;
   endSession(sessionId: string): Promise<Session>;
@@ -117,6 +124,26 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
   const domainConfig = config.pipelineConfig.domainConfig;
 
   return {
+    async initSession(metadata?: SessionMetadata): Promise<InitSessionResult> {
+      const session = await sessionRepo.create({
+        domainConfigName: domainConfig.name,
+        personaConfigName: config.pipelineConfig.personaConfig.name,
+        metadata,
+      });
+
+      log.info({ sessionId: session.id }, 'Initializing session with greeting');
+
+      const greeting = await generateGreeting(
+        config.pipelineConfig.personaConfig,
+        domainConfig,
+        config.pipelineConfig.llmClient,
+      );
+
+      log.info({ sessionId: session.id }, 'Session initialized');
+
+      return { sessionId: session.id, greeting };
+    },
+
     async startSession(input: TurnInput, metadata?: SessionMetadata): Promise<SessionResponse> {
       const session = await sessionRepo.create({
         domainConfigName: domainConfig.name,
@@ -177,9 +204,11 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
 
       const askedQuestions = collectAllQuestions(session);
 
+      const isFirstTurn = session.turns.length === 0;
+
       const turnContext: TurnContext = {
         turnNumber,
-        isFollowUp: true,
+        isFollowUp: !isFirstTurn,
         previousTurns,
         previousEntry: session.currentEntry,
         askedQuestions,

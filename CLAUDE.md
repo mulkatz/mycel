@@ -12,11 +12,13 @@ multi-agent system. The project is closed-source and proprietary.
 - GCP: Cloud Run, Vertex AI, Cloud Storage, Vector Search, Firestore
 - Terraform for infrastructure
 - LangGraph.js for agent orchestration
+- Hono for HTTP API (Cloud Run)
 - Zod for runtime schema validation
 - Vitest for testing
 
 ## Project Structure
-Monorepo with four packages:
+Monorepo with five packages:
+- `packages/api` – HTTP API layer (Hono, Cloud Run entrypoint)
 - `packages/core` – AI engine (agents, orchestration, RAG)
 - `packages/ingestion` – Multimodal input processing (audio, image, text)
 - `packages/schemas` – Domain and Persona schema definitions + validation

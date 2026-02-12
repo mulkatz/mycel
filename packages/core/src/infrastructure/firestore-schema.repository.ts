@@ -68,6 +68,19 @@ export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository
       return domainSchemaFromDoc(id, doc.data() as DomainSchemaDocument);
     },
 
+    async getDomainSchemaByName(name: string): Promise<PersistedDomainSchema | null> {
+      const snapshot = await domainRef
+        .where('name', '==', name)
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        return null;
+      }
+      const doc = snapshot.docs[0];
+      return domainSchemaFromDoc(doc.id, doc.data() as DomainSchemaDocument);
+    },
+
     async getActiveDomainSchema(): Promise<PersistedDomainSchema | null> {
       const snapshot = await domainRef
         .where('isActive', '==', true)
@@ -114,6 +127,19 @@ export function createFirestoreSchemaRepository(db: Firestore): SchemaRepository
         return null;
       }
       return personaSchemaFromDoc(id, doc.data() as PersonaSchemaDocument);
+    },
+
+    async getPersonaSchemaByName(name: string): Promise<PersistedPersonaSchema | null> {
+      const snapshot = await personaRef
+        .where('name', '==', name)
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        return null;
+      }
+      const doc = snapshot.docs[0];
+      return personaSchemaFromDoc(doc.id, doc.data() as PersonaSchemaDocument);
     },
 
     async getActivePersonaSchema(): Promise<PersistedPersonaSchema | null> {

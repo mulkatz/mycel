@@ -37,9 +37,11 @@ export interface CreatePersonaSchemaInput {
 
 export interface SchemaRepository {
   getDomainSchema(id: string): Promise<PersistedDomainSchema | null>;
+  getDomainSchemaByName(name: string): Promise<PersistedDomainSchema | null>;
   getActiveDomainSchema(): Promise<PersistedDomainSchema | null>;
   saveDomainSchema(input: CreateDomainSchemaInput): Promise<PersistedDomainSchema>;
   getPersonaSchema(id: string): Promise<PersistedPersonaSchema | null>;
+  getPersonaSchemaByName(name: string): Promise<PersistedPersonaSchema | null>;
   getActivePersonaSchema(): Promise<PersistedPersonaSchema | null>;
   savePersonaSchema(input: CreatePersonaSchemaInput): Promise<PersistedPersonaSchema>;
 }
