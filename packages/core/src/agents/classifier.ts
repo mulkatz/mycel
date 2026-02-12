@@ -10,6 +10,7 @@ import { invokeAndValidate } from '../llm/invoke-and-validate.js';
 const log = createChildLogger('agent:classifier');
 
 const UNCATEGORIZED = '_uncategorized';
+const META = '_meta';
 
 export function createClassifierNode(
   domainConfig: DomainConfig,
@@ -47,34 +48,68 @@ Only set isTopicChange to true if the user is clearly talking about something en
 `;
     }
 
-    const systemPrompt = `You are a classifier agent. Your task is to classify user input into one of the following categories:
+    const systemPrompt = `You are a classifier agent. Your FIRST task is to determine the user's INTENT, then classify if needed.
 
+## Step 1: Determine Intent
+
+Before anything else, determine the user's intent:
+
+- "greeting": The user is greeting, making small talk, or saying something with no informational content.
+  Examples: "hi", "hallo", "hey", "guten Tag", "moin", "servus", "hello", "what's up", "na?"
+  → Set categoryId to "${META}", confidence to 1.0
+
+- "proactive_request": The user is asking YOU to ask THEM questions or wants to know what information is still needed.
+  Examples: "frag mich was", "frag mich etwas", "ask me something", "was willst du wissen?", "was fehlt noch?", "worüber willst du reden?", "was kann ich dir erzählen?", "stell mir eine Frage"
+  → Set categoryId to "${META}", confidence to 1.0
+
+- "dont_know": The user is saying they don't know the answer to a question (ONLY on follow-up turns when responding to a previous question).
+  Examples: "weiß ich nicht", "keine Ahnung", "I don't know", "no idea", "not sure", "da bin ich überfragt", "kann ich nicht sagen", "weiß nicht"
+  → Keep the current categoryId (use activeCategory from session context), set isTopicChange to false
+
+- "content": The user is sharing actual knowledge, information, facts, stories, or descriptions.
+  → Classify into one of the categories below
+
+## Step 2: Classify (only for "content" intent)
+
+Available categories:
 ${categoryList}
 
-If the input does not clearly fit any category, classify it as "${UNCATEGORIZED}". It is better to be honest about uncertainty than to force a bad classification. Use "${UNCATEGORIZED}" when your confidence would be below 0.6 for any existing category.
+If the input does not clearly fit any category, classify it as "${UNCATEGORIZED}". Use "${UNCATEGORIZED}" when your confidence would be below 0.6 for any existing category.
 
 When classifying as "${UNCATEGORIZED}":
 - Set confidence to your actual confidence level (which will be low)
 - Provide a short "summary" describing what the input is about
-- Provide a "suggestedCategoryLabel" — your best guess at what a NEW category might be called for this type of input (e.g. "Fishing", "Childhood Memories", "Local Recipes"). Use ${primaryLanguage} for the label.
+- Provide a "suggestedCategoryLabel" — your best guess for a new category name in ${primaryLanguage}
+
+IMPORTANT: Only include "summary" and "suggestedCategoryLabel" when categoryId is "${UNCATEGORIZED}". For all other categories, do NOT include these fields.
 ${sessionContext}
 Respond with a JSON object containing:
-- categoryId: the ID of the best matching category, or "${UNCATEGORIZED}"
-- subcategoryId: optional subcategory if applicable
-- confidence: a number between 0 and 1 indicating your confidence
-- isTopicChange: boolean — whether the user changed to a new topic (only relevant for follow-up turns, set false for first turns)
-- reasoning: a brief explanation of your classification
-- summary: (only for ${UNCATEGORIZED}) a short description of what the input is about
-- suggestedCategoryLabel: (only for ${UNCATEGORIZED}) your best guess for a new category name in ${primaryLanguage}
+- categoryId: the category ID, "${UNCATEGORIZED}", or "${META}"
+- subcategoryId: optional subcategory if applicable (null for non-content intents)
+- confidence: a number between 0 and 1
+- intent: one of "content", "greeting", "proactive_request", "dont_know"
+- isTopicChange: boolean — whether the user changed to a new topic (only for follow-up turns, false otherwise)
+- reasoning: a brief explanation
+- summary: (only for ${UNCATEGORIZED}) short description of the input
+- suggestedCategoryLabel: (only for ${UNCATEGORIZED}) suggested new category name in ${primaryLanguage}
 
-Example response for a matching category:
-{"categoryId": "history", "subcategoryId": null, "confidence": 0.92, "isTopicChange": false, "reasoning": "The input discusses historical events from the 18th century."}
+Example for content:
+{"categoryId": "history", "confidence": 0.92, "intent": "content", "isTopicChange": false, "reasoning": "Historical content about 18th century."}
 
-Example response for uncategorized input:
-{"categoryId": "${UNCATEGORIZED}", "confidence": 0.3, "isTopicChange": false, "reasoning": "The input describes personal childhood memories that don't fit existing categories.", "summary": "Personal childhood memory about summers in the village", "suggestedCategoryLabel": "Childhood Memories"}
+Example for greeting:
+{"categoryId": "${META}", "confidence": 1.0, "intent": "greeting", "isTopicChange": false, "reasoning": "User is greeting."}
 
-Example response for a topic change:
-{"categoryId": "nature", "confidence": 0.85, "isTopicChange": true, "reasoning": "The user was previously discussing history but is now talking about a lake, which is a nature topic."}`;
+Example for proactive request:
+{"categoryId": "${META}", "confidence": 1.0, "intent": "proactive_request", "isTopicChange": false, "reasoning": "User wants to be asked questions."}
+
+Example for don't know:
+{"categoryId": "history", "confidence": 1.0, "intent": "dont_know", "isTopicChange": false, "reasoning": "User doesn't know the answer to the previous question about history."}
+
+Example for uncategorized:
+{"categoryId": "${UNCATEGORIZED}", "confidence": 0.3, "intent": "content", "isTopicChange": false, "reasoning": "Personal memory.", "summary": "Childhood summers in the village", "suggestedCategoryLabel": "Kindheitserinnerungen"}
+
+Example for topic change:
+{"categoryId": "nature", "confidence": 0.85, "intent": "content", "isTopicChange": true, "reasoning": "User switched from history to nature."}`;
 
     const result = await invokeAndValidate({
       llmClient,
@@ -87,9 +122,13 @@ Example response for a topic change:
       agentName: 'Classifier',
     });
 
-    if (result.categoryId !== UNCATEGORIZED && !categoryIds.includes(result.categoryId)) {
+    if (
+      result.categoryId !== UNCATEGORIZED &&
+      result.categoryId !== META &&
+      !categoryIds.includes(result.categoryId)
+    ) {
       throw new AgentError(
-        `Classifier returned unknown categoryId: ${result.categoryId}. Valid IDs: ${categoryIds.join(', ')}, ${UNCATEGORIZED}`,
+        `Classifier returned unknown categoryId: ${result.categoryId}. Valid IDs: ${categoryIds.join(', ')}, ${UNCATEGORIZED}, ${META}`,
       );
     }
 
@@ -99,6 +138,7 @@ Example response for a topic change:
         categoryId: result.categoryId,
         subcategoryId: result.subcategoryId,
         confidence: result.confidence,
+        intent: result.intent,
         isTopicChange: result.isTopicChange,
         summary: result.summary,
         suggestedCategoryLabel: result.suggestedCategoryLabel,
@@ -112,6 +152,7 @@ Example response for a topic change:
         sessionId: state.sessionId,
         categoryId: result.categoryId,
         confidence: result.confidence,
+        intent: result.intent,
         isTopicChange: result.isTopicChange,
       },
       'Classification complete',

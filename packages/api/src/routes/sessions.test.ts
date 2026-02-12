@@ -69,6 +69,7 @@ function createMockLlm(): LlmClient {
           content: JSON.stringify({
             categoryId: 'history',
             confidence: 0.9,
+            intent: 'content',
             isTopicChange: false,
             reasoning: 'Historical content.',
           }),

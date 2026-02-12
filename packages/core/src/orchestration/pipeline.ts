@@ -7,7 +7,7 @@ import type { LlmClient } from '../llm/llm-client.js';
 import type { EmbeddingClient } from '../embedding/embedding-client.js';
 import type { KnowledgeRepository } from '../repositories/knowledge.repository.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
-import { PipelineGraphAnnotation } from './pipeline-state.js';
+import { PipelineGraphAnnotation, type PipelineGraphState } from './pipeline-state.js';
 import { createClassifierNode } from '../agents/classifier.js';
 import { createContextDispatcherNode } from '../agents/context-dispatcher.js';
 import { createGapReasoningNode } from '../agents/gap-reasoning.js';
@@ -33,6 +33,22 @@ export interface Pipeline {
   run(input: AgentInput, options?: PipelineRunOptions): Promise<PipelineState>;
 }
 
+function routeAfterClassifier(state: PipelineGraphState): string {
+  const intent = state.classifierOutput?.result.intent;
+  if (intent === 'greeting') {
+    return 'persona';
+  }
+  return 'contextDispatcher';
+}
+
+function routeAfterPersona(state: PipelineGraphState): string {
+  const intent = state.classifierOutput?.result.intent;
+  if (intent === 'greeting' || intent === 'proactive_request' || intent === 'dont_know') {
+    return '__end__';
+  }
+  return 'structuring';
+}
+
 export function createPipeline(config: PipelineConfig): Pipeline {
   log.info(
     { domain: config.domainConfig.name, persona: config.personaConfig.name },
@@ -56,10 +72,16 @@ export function createPipeline(config: PipelineConfig): Pipeline {
     .addNode('persona', personaNode)
     .addNode('structuring', structuringNode)
     .addEdge(START, 'classifier')
-    .addEdge('classifier', 'contextDispatcher')
+    .addConditionalEdges('classifier', routeAfterClassifier, {
+      persona: 'persona',
+      contextDispatcher: 'contextDispatcher',
+    })
     .addEdge('contextDispatcher', 'gapReasoning')
     .addEdge('gapReasoning', 'persona')
-    .addEdge('persona', 'structuring')
+    .addConditionalEdges('persona', routeAfterPersona, {
+      structuring: 'structuring',
+      __end__: END,
+    })
     .addEdge('structuring', END)
     .compile();
 

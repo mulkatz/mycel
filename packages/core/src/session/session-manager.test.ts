@@ -74,12 +74,26 @@ function createMockLlm(): {
 
       // Classifier runs on every turn now
       if (prompt.includes('classifier')) {
+        // Greeting detection
+        if (userMsg === 'hi' || userMsg === 'hallo') {
+          return Promise.resolve({
+            content: JSON.stringify({
+              categoryId: '_meta',
+              confidence: 1.0,
+              intent: 'greeting',
+              isTopicChange: false,
+              reasoning: 'User is greeting.',
+            }),
+          });
+        }
+
         // Topic change detection for nature-related input
         if (hasSessionContext && (userMsg.includes('lake') || userMsg.includes('forest'))) {
           return Promise.resolve({
             content: JSON.stringify({
               categoryId: 'nature',
               confidence: 0.9,
+              intent: 'content',
               isTopicChange: true,
               reasoning: 'User changed topic to nature.',
             }),
@@ -90,6 +104,7 @@ function createMockLlm(): {
           content: JSON.stringify({
             categoryId: 'history',
             confidence: 0.9,
+            intent: 'content',
             isTopicChange: false,
             reasoning: 'Historical content',
           }),
@@ -128,6 +143,14 @@ function createMockLlm(): {
       }
 
       if (prompt.includes('persona')) {
+        if (prompt.includes('[intent: greeting]')) {
+          return Promise.resolve({
+            content: JSON.stringify({
+              response: 'Hey! What would you like to tell me about?',
+              followUpQuestions: [],
+            }),
+          });
+        }
         if (isFollowUp && prompt.includes('turn 3')) {
           return Promise.resolve({
             content: JSON.stringify({
@@ -477,5 +500,41 @@ describe('SessionManager', () => {
 
     const sessionAfter = await sessionRepo.getSessionWithTurns(turn1.sessionId);
     expect(sessionAfter?.classifierResult?.result.categoryId).toBe('nature');
+  });
+
+  it('should not create Knowledge Entry for greeting', async () => {
+    const { manager, knowledgeRepo } = createTestManager();
+
+    const init = await manager.initSession({ source: 'api' });
+
+    const response = await manager.continueSession(init.sessionId, {
+      content: 'hi',
+      isFollowUpResponse: false,
+    });
+
+    // Should have a persona response but no entry
+    expect(response.personaResponse).toBeTruthy();
+    expect(response.entry).toBeUndefined();
+    expect(response.completenessScore).toBe(0);
+
+    // No knowledge entries should be persisted
+    const entries = await knowledgeRepo.getBySession(init.sessionId);
+    expect(entries).toHaveLength(0);
+  });
+
+  it('should not persist entry for greeting intent on startSession', async () => {
+    const { manager, knowledgeRepo } = createTestManager();
+
+    const response = await manager.startSession({
+      content: 'hallo',
+      isFollowUpResponse: false,
+    });
+
+    // Should have a greeting response
+    expect(response.personaResponse).toBeTruthy();
+    expect(response.entry).toBeUndefined();
+
+    const entries = await knowledgeRepo.getBySession(response.sessionId);
+    expect(entries).toHaveLength(0);
   });
 });

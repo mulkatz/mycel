@@ -38,7 +38,7 @@ function createMockState(): PipelineGraphState {
     },
     classifierOutput: {
       agentRole: 'classifier',
-      result: { categoryId: 'history', confidence: 0.9 },
+      result: { categoryId: 'history', confidence: 0.9, intent: 'content' as const },
       confidence: 0.9,
     },
     contextDispatcherOutput: undefined,
@@ -70,6 +70,7 @@ function createUncategorizedState(): PipelineGraphState {
       result: {
         categoryId: '_uncategorized',
         confidence: 0.3,
+        intent: 'content' as const,
         summary: 'Personal childhood memory about summers',
         suggestedCategoryLabel: 'Childhood Memories',
       },
@@ -144,7 +145,7 @@ describe('createStructuringNode', () => {
       ...createMockState(),
       classifierOutput: {
         agentRole: 'classifier',
-        result: { categoryId: 'nonexistent', confidence: 0.9 },
+        result: { categoryId: 'nonexistent', confidence: 0.9, intent: 'content' as const },
         confidence: 0.9,
       },
     };
@@ -262,7 +263,7 @@ describe('createStructuringNode', () => {
       },
       classifierOutput: {
         agentRole: 'classifier',
-        result: { categoryId: 'nature', confidence: 0.85, isTopicChange: true },
+        result: { categoryId: 'nature', confidence: 0.85, intent: 'content' as const, isTopicChange: true },
         confidence: 0.85,
       },
       turnContext: {
@@ -282,6 +283,7 @@ describe('createStructuringNode', () => {
           updatedAt: new Date('2024-01-01'),
         },
         askedQuestions: ['When was this?'],
+        skippedFields: [],
       },
       activeCategory: 'history',
     };

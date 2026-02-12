@@ -53,6 +53,7 @@ function createMockLlm(): { client: LlmClient; callCount: () => number } {
           content: JSON.stringify({
             categoryId: 'history',
             confidence: 0.9,
+            intent: 'content',
             isTopicChange: false,
             reasoning: 'Historical content',
           }),
@@ -156,10 +157,48 @@ function createUncategorizedMockLlm(): { client: LlmClient; callCount: () => num
           content: JSON.stringify({
             categoryId: '_uncategorized',
             confidence: 0.3,
+            intent: 'content',
             isTopicChange: false,
             reasoning: 'Does not fit existing categories.',
             summary: 'Personal childhood memory about summers',
             suggestedCategoryLabel: 'Childhood Memories',
+          }),
+        };
+      }
+
+      return { content: JSON.stringify({ result: 'unknown' }) };
+    });
+  const wrappedInvoke: LlmClient['invoke'] = (request) => {
+    calls++;
+    return invokeFn(request) as Promise<{ content: string }>;
+  };
+  return { client: { invoke: wrappedInvoke }, callCount: () => calls };
+}
+
+function createGreetingMockLlm(): { client: LlmClient; callCount: () => number } {
+  let calls = 0;
+  const invokeFn = vi
+    .fn()
+    .mockImplementation((request: { systemPrompt: string; userMessage: string }) => {
+      const prompt = request.systemPrompt.toLowerCase();
+
+      if (prompt.includes('classifier')) {
+        return {
+          content: JSON.stringify({
+            categoryId: '_meta',
+            confidence: 1.0,
+            intent: 'greeting',
+            isTopicChange: false,
+            reasoning: 'User is greeting.',
+          }),
+        };
+      }
+
+      if (prompt.includes('persona')) {
+        return {
+          content: JSON.stringify({
+            response: 'Hey! What would you like to tell me about?',
+            followUpQuestions: [],
           }),
         };
       }
@@ -289,9 +328,35 @@ describe('createPipeline', () => {
         isFollowUp: true,
         previousTurns: [],
         askedQuestions: ['When was this?'],
+        skippedFields: [],
       },
     });
 
     expect(result.activeCategory).toBe('history');
+  });
+
+  it('should skip structuring for greeting intent', async () => {
+    const { client, callCount } = createGreetingMockLlm();
+    const pipeline = createPipeline({
+      domainConfig,
+      personaConfig,
+      llmClient: client,
+    });
+
+    const input: AgentInput = {
+      sessionId: 'greeting-test',
+      content: 'hi',
+      metadata: {},
+    };
+
+    const result = await pipeline.run(input);
+
+    expect(result.classifierOutput?.result.intent).toBe('greeting');
+    expect(result.personaOutput).toBeDefined();
+    expect(result.personaOutput?.result.response).toBeTruthy();
+    // Structuring should NOT run for greetings
+    expect(result.structuringOutput).toBeUndefined();
+    // Only 2 LLM calls: classifier + persona (no context, gap, structuring)
+    expect(callCount()).toBe(2);
   });
 });

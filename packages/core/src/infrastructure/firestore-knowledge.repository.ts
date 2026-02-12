@@ -25,7 +25,7 @@ interface KnowledgeEntryDocument {
   categoryId: string;
   subcategoryId?: string | null;
   confidence: number;
-  suggestedCategoryLabel: string;
+  suggestedCategoryLabel?: string;
   topicKeywords: string[];
   rawInput: string;
   domainSchemaId?: string;

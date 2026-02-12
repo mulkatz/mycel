@@ -52,6 +52,7 @@ export interface TurnContext {
   readonly previousTurns: readonly TurnSummary[];
   readonly previousEntry?: KnowledgeEntry;
   readonly askedQuestions: readonly string[];
+  readonly skippedFields: readonly string[];
 }
 
 export interface TurnSummary {

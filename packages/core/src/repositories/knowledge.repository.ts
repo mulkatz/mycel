@@ -12,7 +12,7 @@ export interface CreateKnowledgeEntryInput {
   readonly categoryId: string;
   readonly subcategoryId?: string | null;
   readonly confidence: number;
-  readonly suggestedCategoryLabel: string;
+  readonly suggestedCategoryLabel?: string;
   readonly topicKeywords: readonly string[];
   readonly rawInput: string;
   readonly domainSchemaId: string;

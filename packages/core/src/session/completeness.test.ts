@@ -20,6 +20,12 @@ const domainConfig: DomainConfig = {
       label: 'Nature',
       description: 'Natural environment',
     },
+    {
+      id: 'organizations',
+      label: 'Organizations',
+      description: 'Clubs and groups',
+      optionalFields: ['members', 'founded', 'activities'],
+    },
   ],
   ingestion: {
     allowedModalities: ['text'],
@@ -28,13 +34,17 @@ const domainConfig: DomainConfig = {
   },
 };
 
-function createEntry(categoryId: string, structuredData: Record<string, unknown>): KnowledgeEntry {
+function createEntry(
+  categoryId: string,
+  structuredData: Record<string, unknown>,
+  content?: string,
+): KnowledgeEntry {
   const now = new Date();
   return {
     id: 'test-entry',
     categoryId,
     title: 'Test',
-    content: 'Test content',
+    content: content ?? 'Test content',
     source: { type: 'text' },
     structuredData,
     tags: [],
@@ -45,6 +55,10 @@ function createEntry(categoryId: string, structuredData: Record<string, unknown>
 }
 
 describe('calculateCompleteness', () => {
+  it('should return 0 when entry is undefined', () => {
+    expect(calculateCompleteness(undefined, domainConfig)).toBe(0);
+  });
+
   it('should return 0 when no required fields are filled', () => {
     const entry = createEntry('history', {});
     expect(calculateCompleteness(entry, domainConfig)).toBe(0);
@@ -60,9 +74,17 @@ describe('calculateCompleteness', () => {
     expect(calculateCompleteness(entry, domainConfig)).toBe(1.0);
   });
 
-  it('should return 1.0 for a category with no required fields', () => {
-    const entry = createEntry('nature', {});
-    expect(calculateCompleteness(entry, domainConfig)).toBe(1.0);
+  it('should return 0.3-0.5 for a category with no required or optional fields', () => {
+    // nature has no requiredFields and no optionalFields
+    const shortEntry = createEntry('nature', {}, 'Short');
+    expect(calculateCompleteness(shortEntry, domainConfig)).toBe(0.3);
+
+    const longEntry = createEntry(
+      'nature',
+      {},
+      'A detailed description of the local nature that has more than 50 characters of content',
+    );
+    expect(calculateCompleteness(longEntry, domainConfig)).toBe(0.5);
   });
 
   it('should return 0 for a nonexistent category', () => {
@@ -85,23 +107,25 @@ describe('calculateCompleteness', () => {
     expect(calculateCompleteness(entry, domainConfig)).toBe(0.5);
   });
 
-  it('should ignore optional fields in the calculation', () => {
+  it('should ignore optional fields in calculation for categories with required fields', () => {
     const entry = createEntry('history', { relatedPlaces: 'Village center' });
     expect(calculateCompleteness(entry, domainConfig)).toBe(0);
   });
 
-  it('should return 1.0 for _uncategorized entry with suggestedCategoryLabel, topicKeywords, and content', () => {
+  it('should return low score (≤0.3) for _uncategorized entries', () => {
     const entry = createEntry('_uncategorized', {
       suggestedCategoryLabel: 'Childhood Memories',
       topicKeywords: ['childhood', 'summer'],
     });
-    expect(calculateCompleteness(entry, domainConfig)).toBeCloseTo(1.0);
+    // 3/3 filled * 0.3 = 0.3
+    expect(calculateCompleteness(entry, domainConfig)).toBeCloseTo(0.3);
   });
 
-  it('should return partial score for _uncategorized entry missing metadata', () => {
+  it('should return partial low score for _uncategorized entry missing metadata', () => {
     const entry = createEntry('_uncategorized', {});
     // Has content (from createEntry) but no suggestedCategoryLabel or topicKeywords
-    expect(calculateCompleteness(entry, domainConfig)).toBeCloseTo(1 / 3);
+    // 1/3 * 0.3 = 0.1
+    expect(calculateCompleteness(entry, domainConfig)).toBeCloseTo(0.1);
   });
 
   it('should count empty topicKeywords array as missing', () => {
@@ -110,6 +134,25 @@ describe('calculateCompleteness', () => {
       topicKeywords: [],
     });
     // Has content + suggestedCategoryLabel but no topicKeywords
-    expect(calculateCompleteness(entry, domainConfig)).toBeCloseTo(2 / 3);
+    // 2/3 * 0.3 = 0.2
+    expect(calculateCompleteness(entry, domainConfig)).toBeCloseTo(0.2);
+  });
+
+  it('should use optional fields capped at 80% for categories with only optional fields', () => {
+    // organizations has only optional fields: members, founded, activities
+    const entryNone = createEntry('organizations', {});
+    expect(calculateCompleteness(entryNone, domainConfig)).toBe(0);
+
+    const entryOne = createEntry('organizations', { members: '20 people' });
+    // 1/3 * 0.8 ≈ 0.267
+    expect(calculateCompleteness(entryOne, domainConfig)).toBeCloseTo(0.267, 2);
+
+    const entryAll = createEntry('organizations', {
+      members: '20',
+      founded: '1995',
+      activities: 'sports',
+    });
+    // 3/3 * 0.8 = 0.8
+    expect(calculateCompleteness(entryAll, domainConfig)).toBe(0.8);
   });
 });

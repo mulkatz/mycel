@@ -36,9 +36,9 @@ Before starting any task from the backlog:
 - [ ] Monitoring and observability
 
 ## Known Issues (conversation quality, iterative improvement)
-- [ ] Completeness score is unreliable (100% for "hi", 0% for actual content)
-- [ ] System doesn't let go when user says "I don't know" repeatedly
+- [x] Completeness score is unreliable (100% for "hi", 0% for actual content)
+- [x] System doesn't let go when user says "I don't know" repeatedly
 - [x] No proactive initial question based on domain schema (solved via API greeting)
-- [ ] Topic change from lake back to church instead of continuing lake topic
-- [ ] Zod validation warnings for suggestedCategoryLabel on non-uncategorized classifications
-- [ ] "ask me something" should trigger proactive domain-based questions
+- [x] Topic change detection (verified already working — classifier runs every turn)
+- [x] Zod validation warnings for suggestedCategoryLabel on non-uncategorized classifications
+- [x] "ask me something" should trigger proactive domain-based questions

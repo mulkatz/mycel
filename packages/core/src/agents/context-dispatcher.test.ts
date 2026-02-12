@@ -11,7 +11,7 @@ function createMockState(overrides: Partial<PipelineGraphState> = {}): PipelineG
     input: { sessionId: 'test-session', content: 'test content', metadata: {} },
     classifierOutput: {
       agentRole: 'classifier',
-      result: { categoryId: 'history', confidence: 0.9 },
+      result: { categoryId: 'history', confidence: 0.9, intent: 'content' as const },
       confidence: 0.9,
     },
     contextDispatcherOutput: undefined,

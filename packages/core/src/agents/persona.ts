@@ -13,8 +13,10 @@ export function createPersonaNode(
   llmClient: LlmClient,
 ): (state: PipelineGraphState) => Promise<Partial<PipelineGraphState>> {
   return async (state: PipelineGraphState): Promise<Partial<PipelineGraphState>> => {
+    const intent = state.classifierOutput?.result.intent;
+
     log.info(
-      { sessionId: state.sessionId, persona: personaConfig.name },
+      { sessionId: state.sessionId, persona: personaConfig.name, intent },
       'Generating persona response',
     );
 
@@ -47,6 +49,34 @@ Focus only on remaining gaps that have not been addressed yet.
 
     const hasGaps = allGaps.length > 0;
 
+    let intentContext = '';
+    if (intent === 'greeting') {
+      intentContext = `
+[INTENT: GREETING]
+The user is greeting you. Respond with a warm, short greeting. Invite them to share something.
+Do NOT ask specific follow-up questions — just welcome them.
+Keep it very brief — 1 sentence.
+`;
+    } else if (intent === 'proactive_request') {
+      intentContext = `
+[INTENT: PROACTIVE REQUEST]
+The user asked you to ask them questions ("frag mich was" / "ask me something").
+Pick ONE question from the gap analysis below and ask it enthusiastically and naturally.
+${hasRetrievedContext ? 'Reference what you already know to frame your question: "Über die Kirche weiß ich schon einiges — aber gibt es hier auch Vereine?"' : ''}
+Keep it SHORT — 1-2 sentences. Show genuine enthusiasm about wanting to learn.
+`;
+    } else if (intent === 'dont_know') {
+      intentContext = `
+[INTENT: DON'T KNOW]
+The user just said they don't know the answer. Acknowledge this warmly and gracefully.
+- Say something like "Kein Problem!" or "Macht nichts!" — keep it light
+- Do NOT push on the same topic
+- If there are gaps in a DIFFERENT area, transition naturally to that topic
+- If no other gaps: "Kein Problem! Fällt dir sonst noch was ein — vielleicht zu einem ganz anderen Thema?"
+- Keep it SHORT — 1-2 sentences
+`;
+    }
+
     const systemPrompt = `${personaConfig.systemPromptTemplate}
 
 Your persona:
@@ -55,7 +85,7 @@ Your persona:
 - Formality: ${personaConfig.formality}
 - Language: ${personaConfig.language}
 ${personaConfig.addressForm ? `- Address form: ${personaConfig.addressForm}` : ''}
-
+${intentContext}
 The following gaps were identified in the user's input:
 ${gapSummary}
 ${
@@ -100,7 +130,10 @@ Example good response (user said "I don't know"):
 {"response": "No problem! What else comes to mind about this place?", "followUpQuestions": []}
 
 Example good response (no gaps, closing):
-{"response": "Great, that paints a really nice picture of the church! Anything else you can think of — maybe a local club or a story from the village?", "followUpQuestions": []}`;
+{"response": "Great, that paints a really nice picture of the church! Anything else you can think of — maybe a local club or a story from the village?", "followUpQuestions": []}
+
+Example good response (greeting):
+{"response": "Hey! What would you like to tell me about?", "followUpQuestions": []}`;
 
     log.info(
       {
@@ -108,6 +141,7 @@ Example good response (no gaps, closing):
         hasRetrievedContext,
         relevantContextCount: state.contextDispatcherOutput?.result.relevantContext.length ?? 0,
         contextSummary,
+        intent,
       },
       'Persona prompt: context injection',
     );

@@ -204,6 +204,7 @@ function createMockResponse(systemPrompt: string, userMessage: string): string {
         categoryId: 'nature',
         subcategoryId: undefined,
         confidence: 0.85,
+        intent: 'content',
         isTopicChange: true,
         reasoning: 'The user changed from a different topic to discussing nature.',
       });
@@ -214,6 +215,7 @@ function createMockResponse(systemPrompt: string, userMessage: string): string {
         categoryId: 'history',
         subcategoryId: undefined,
         confidence: 0.85,
+        intent: 'content',
         isTopicChange: false,
         reasoning: 'The input references historical events and time periods.',
       });
@@ -222,6 +224,7 @@ function createMockResponse(systemPrompt: string, userMessage: string): string {
     return JSON.stringify({
       categoryId: '_uncategorized',
       confidence: 0.3,
+      intent: 'content',
       isTopicChange: false,
       reasoning: 'The input does not clearly fit any existing category.',
       summary: 'A personal account or observation shared by a community member.',

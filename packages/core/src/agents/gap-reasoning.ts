@@ -18,11 +18,25 @@ export function createGapReasoningNode(
 ): (state: PipelineGraphState) => Promise<Partial<PipelineGraphState>> {
   return async (state: PipelineGraphState): Promise<Partial<PipelineGraphState>> => {
     const categoryId = state.classifierOutput?.result.categoryId;
+    const intent = state.classifierOutput?.result.intent;
+
     if (!categoryId) {
       throw new AgentError('Gap reasoning requires classifier output with a categoryId');
     }
 
-    log.info({ sessionId: state.sessionId, categoryId }, 'Analyzing knowledge gaps');
+    log.info({ sessionId: state.sessionId, categoryId, intent }, 'Analyzing knowledge gaps');
+
+    // For greeting intent, return empty gaps (this node shouldn't run for greetings
+    // but handle gracefully if it does)
+    if (intent === 'greeting') {
+      const gapReasoningOutput: GapReasoningOutput = {
+        agentRole: 'gap-reasoning',
+        result: { gaps: [], followUpQuestions: [] },
+        confidence: 1.0,
+        reasoning: 'No gap analysis needed for greeting.',
+      };
+      return { gapReasoningOutput };
+    }
 
     const isUncategorized = categoryId === UNCATEGORIZED;
 
@@ -30,6 +44,19 @@ export function createGapReasoningNode(
       state.contextDispatcherOutput?.result.contextSummary ?? 'No context available.';
     const hasRetrievedContext =
       (state.contextDispatcherOutput?.result.relevantContext.length ?? 0) > 0;
+
+    const skippedFields = state.turnContext?.skippedFields ?? [];
+
+    let skippedFieldsContext = '';
+    if (skippedFields.length > 0) {
+      skippedFieldsContext = `
+[SKIPPED TOPICS]
+The user has already said they don't know about these topics — do NOT ask about them again:
+${skippedFields.map((f) => `- ${f}`).join('\n')}
+
+Instead, ask about something completely different or a different category.
+`;
+    }
 
     let followUpContext = '';
     if (state.turnContext?.isFollowUp) {
@@ -58,7 +85,71 @@ Focus ONLY on remaining gaps that have not been filled yet.
 
     let systemPrompt: string;
 
-    if (isUncategorized) {
+    // Proactive request mode: analyze domain-wide coverage
+    if (intent === 'proactive_request') {
+      const categoryList = domainConfig.categories
+        .map((c) => {
+          const fields = [
+            ...(c.requiredFields ?? []),
+            ...(c.optionalFields ?? []),
+          ];
+          return `- ${c.id}: ${c.label} — ${c.description}${fields.length > 0 ? ` (fields: ${fields.join(', ')})` : ''}`;
+        })
+        .join('\n');
+
+      systemPrompt = `You are analyzing which knowledge areas need more coverage. The user has asked you to ask them questions.
+
+Available categories:
+${categoryList}
+
+## What Is Already Known
+${contextSummary}
+${skippedFieldsContext}
+Based on what is already known (above), identify which categories have the LEAST coverage or are completely empty.
+Generate 1-2 natural questions about the weakest areas. These should be conversational and specific — not generic "tell me about X" but specific, curious questions like "Gibt es in der Gegend eigentlich Vereine? Einen Sportverein oder eine Freiwillige Feuerwehr vielleicht?"
+
+Rules:
+- Focus on categories with ZERO or very few entries
+- If all categories have some coverage, ask about depth/details in the weakest one
+- Questions should feel natural, like a curious local would ask
+- Maximum 2 questions
+- For gaps, use the category id as the field name
+
+Respond with a JSON object containing:
+- gaps: array of { field, description, priority } — the weakest knowledge areas
+- followUpQuestions: array of strings (max 2)
+- reasoning: brief explanation of your analysis`;
+    } else if (intent === 'dont_know') {
+      // Don't know mode: find alternative topics to ask about
+      const allGapsSkipped = skippedFields.length > 0;
+      const category = domainConfig.categories.find((c) => c.id === categoryId);
+      const otherCategories = domainConfig.categories
+        .filter((c) => c.id !== categoryId)
+        .map((c) => `- ${c.id}: ${c.label} — ${c.description}`)
+        .join('\n');
+
+      systemPrompt = `You are a gap-reasoning agent. The user just said they don't know the answer to a previous question.
+
+Current category: ${category?.label ?? categoryId}
+${otherCategories.length > 0 ? `\nOther available categories:\n${otherCategories}` : ''}
+
+## Already Known
+${contextSummary}
+${skippedFieldsContext}
+${followUpContext}
+The user doesn't know about the last thing you asked. ${allGapsSkipped ? 'Multiple topics in this category have been skipped already.' : ''}
+
+Rules:
+- Do NOT ask about skipped topics again
+- ${allGapsSkipped ? 'Suggest switching to a DIFFERENT category entirely' : 'Try a different angle within the current category, or suggest a different category'}
+- Generate at most 1 follow-up question about an unasked topic
+- If there's truly nothing left to ask, return empty gaps and questions
+
+Respond with a JSON object containing:
+- gaps: array of { field, description, priority }
+- followUpQuestions: array of strings (max 1)
+- reasoning: brief explanation`;
+    } else if (isUncategorized) {
       const classifierSummary = state.classifierOutput?.result.summary ?? 'No summary available.';
       const suggestedLabel = state.classifierOutput?.result.suggestedCategoryLabel;
 
@@ -69,6 +160,7 @@ ${suggestedLabel ? `Suggested topic area: ${suggestedLabel}` : ''}
 
 ## Already Known
 ${contextSummary}
+${skippedFieldsContext}
 ${followUpContext}
 Your task is to understand what the user is sharing and ask questions that help capture their knowledge more fully. You are NOT checking against a predefined list of fields.
 
@@ -105,6 +197,7 @@ Optional fields for this category: ${optionalFields.length > 0 ? optionalFields.
 
 ## Already Known
 ${contextSummary}
+${skippedFieldsContext}
 ${followUpContext}
 Identify what information is missing or incomplete. For each gap, specify the field name, a description of what is missing, and a priority (high for required fields, medium/low for optional).
 
@@ -131,6 +224,8 @@ Example response:
         hasRetrievedContext,
         relevantContextCount: state.contextDispatcherOutput?.result.relevantContext.length ?? 0,
         contextSummary,
+        intent,
+        skippedFieldsCount: skippedFields.length,
       },
       'Gap reasoning prompt: context injection',
     );

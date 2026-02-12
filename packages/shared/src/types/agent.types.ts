@@ -21,12 +21,15 @@ export interface AgentOutput {
   readonly reasoning?: string;
 }
 
+export type ClassifierIntent = 'content' | 'greeting' | 'proactive_request' | 'dont_know';
+
 export interface ClassifierOutput extends AgentOutput {
   readonly agentRole: 'classifier';
   readonly result: {
     readonly categoryId: string;
     readonly subcategoryId?: string | null;
     readonly confidence: number;
+    readonly intent: ClassifierIntent;
     readonly isTopicChange?: boolean;
     readonly summary?: string;
     readonly suggestedCategoryLabel?: string;

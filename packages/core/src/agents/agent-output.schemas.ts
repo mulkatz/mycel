@@ -5,6 +5,7 @@ export const ClassifierResultSchema = z.object({
   categoryId: z.string(),
   subcategoryId: z.string().nullable().optional(),
   confidence: z.number().min(0).max(1),
+  intent: z.enum(['content', 'greeting', 'proactive_request', 'dont_know']),
   isTopicChange: z.boolean().optional(),
   reasoning: z.string().optional(),
   summary: z.string().optional(),

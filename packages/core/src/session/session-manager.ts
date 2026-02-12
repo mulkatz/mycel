@@ -50,7 +50,7 @@ function buildTurnSummary(
   result: PipelineState,
 ): TurnSummary {
   const gaps = result.gapReasoningOutput?.result.gaps.map((g) => g.field) ?? [];
-  const filledFields = Object.keys(result.structuringOutput?.result.entry.structuredData ?? {});
+  const filledFields = Object.keys(result.structuringOutput?.result.entry?.structuredData ?? {});
   return {
     turnNumber,
     userInput: input.content,
@@ -66,6 +66,20 @@ function collectAllQuestions(session: Session): readonly string[] {
     questions.push(...personaQuestions);
   }
   return questions;
+}
+
+function collectSkippedFields(session: Session): readonly string[] {
+  const skipped: string[] = [];
+  for (let i = 0; i < session.turns.length; i++) {
+    const turn = session.turns[i];
+    const intent = turn.pipelineResult.classifierOutput?.result.intent;
+    if (intent === 'dont_know' && i > 0) {
+      const prevTurn = session.turns[i - 1];
+      const prevGaps = prevTurn.pipelineResult.gapReasoningOutput?.result.gaps ?? [];
+      skipped.push(...prevGaps.map((g) => g.field));
+    }
+  }
+  return [...new Set(skipped)];
 }
 
 function buildSessionResponse(
@@ -125,13 +139,16 @@ async function persistKnowledgeEntry(
   }
 
   const classifierResult = result.classifierOutput?.result;
+  const isUncategorized = entry.categoryId === '_uncategorized';
   const input: CreateKnowledgeEntryInput = {
     sessionId,
     turnId,
     categoryId: entry.categoryId,
     subcategoryId: entry.subcategoryId,
     confidence: classifierResult?.confidence ?? 0,
-    suggestedCategoryLabel: classifierResult?.suggestedCategoryLabel ?? entry.categoryId,
+    suggestedCategoryLabel: isUncategorized
+      ? (classifierResult?.suggestedCategoryLabel ?? 'unknown')
+      : undefined,
     topicKeywords: [...entry.tags],
     rawInput,
     domainSchemaId,
@@ -199,7 +216,7 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
 
       const result = await pipeline.run(agentInput);
       const entry = result.structuringOutput?.result.entry;
-      const completenessScore = entry ? calculateCompleteness(entry, domainConfig) : 0;
+      const completenessScore = calculateCompleteness(entry, domainConfig);
 
       const turn = await sessionRepo.addTurn(session.id, {
         turnNumber: 1,
@@ -246,6 +263,7 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
       );
 
       const askedQuestions = collectAllQuestions(session);
+      const skippedFields = collectSkippedFields(session);
 
       const isFirstTurn = session.turns.length === 0;
 
@@ -255,6 +273,7 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
         previousTurns,
         previousEntry: session.currentEntry,
         askedQuestions,
+        skippedFields,
       };
 
       const agentInput = {
@@ -284,7 +303,7 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
       }
 
       const entry = result.structuringOutput?.result.entry;
-      const completenessScore = entry ? calculateCompleteness(entry, domainConfig) : 0;
+      const completenessScore = calculateCompleteness(entry, domainConfig);
 
       const turn = await sessionRepo.addTurn(sessionId, {
         turnNumber,
@@ -292,23 +311,31 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
         pipelineResult: result,
       });
 
+      // Only update currentEntry and classifierResult when we have an entry (content intent)
+      // For greeting/proactive intents, keep the existing session state
+      const hasEntry = entry !== undefined;
       await sessionRepo.update(sessionId, {
         status: 'active',
-        currentEntry: isTopicChange ? entry : (entry ?? session.currentEntry),
-        classifierResult: isTopicChange
-          ? result.classifierOutput
-          : (session.classifierResult ?? result.classifierOutput),
+        currentEntry: hasEntry ? entry : session.currentEntry,
+        classifierResult: hasEntry
+          ? (isTopicChange
+              ? result.classifierOutput
+              : (session.classifierResult ?? result.classifierOutput))
+          : session.classifierResult,
       });
 
-      await persistKnowledgeEntry(
-        knowledgeRepo,
-        embeddingClient,
-        domainConfig.name,
-        result,
-        sessionId,
-        turn.id ?? '',
-        input.content,
-      );
+      // Only persist knowledge entry for content intents
+      if (hasEntry) {
+        await persistKnowledgeEntry(
+          knowledgeRepo,
+          embeddingClient,
+          domainConfig.name,
+          result,
+          sessionId,
+          turn.id ?? '',
+          input.content,
+        );
+      }
 
       log.info({ sessionId, completenessScore, turnNumber, isTopicChange }, 'Session continued');
 

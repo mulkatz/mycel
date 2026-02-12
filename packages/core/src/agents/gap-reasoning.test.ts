@@ -34,7 +34,7 @@ function createMockState(): PipelineGraphState {
     },
     classifierOutput: {
       agentRole: 'classifier',
-      result: { categoryId: 'history', confidence: 0.9 },
+      result: { categoryId: 'history', confidence: 0.9, intent: 'content' as const },
       confidence: 0.9,
     },
     contextDispatcherOutput: {
@@ -63,6 +63,7 @@ function createUncategorizedState(): PipelineGraphState {
       result: {
         categoryId: '_uncategorized',
         confidence: 0.3,
+        intent: 'content' as const,
         summary: 'Personal childhood memory about summers',
         suggestedCategoryLabel: 'Childhood Memories',
       },
@@ -125,7 +126,7 @@ describe('createGapReasoningNode', () => {
       ...createMockState(),
       classifierOutput: {
         agentRole: 'classifier',
-        result: { categoryId: 'nonexistent', confidence: 0.9 },
+        result: { categoryId: 'nonexistent', confidence: 0.9, intent: 'content' as const },
         confidence: 0.9,
       },
     };

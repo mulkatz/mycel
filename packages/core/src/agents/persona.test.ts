@@ -30,7 +30,7 @@ function createMockState(): PipelineGraphState {
     },
     classifierOutput: {
       agentRole: 'classifier',
-      result: { categoryId: 'history', confidence: 0.9 },
+      result: { categoryId: 'history', confidence: 0.9, intent: 'content' as const },
       confidence: 0.9,
     },
     contextDispatcherOutput: undefined,
