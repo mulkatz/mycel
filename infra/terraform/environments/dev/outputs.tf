@@ -12,3 +12,8 @@ output "cloud_run_service_account" {
   description = "Cloud Run service account email"
   value       = module.iam.cloud_run_service_account_email
 }
+
+output "cloud_run_service_url" {
+  description = "Cloud Run service URL"
+  value       = module.cloud_run.service_url
+}

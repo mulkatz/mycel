@@ -1,0 +1,13 @@
+.git
+node_modules
+dist
+*.md
+docs/
+infra/
+scripts/
+.env*
+*.tfvars
+.terraform
+.vitest*
+coverage/
+*.tsbuildinfo

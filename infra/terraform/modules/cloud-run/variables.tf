@@ -35,3 +35,9 @@ variable "environment_variables" {
   type        = map(string)
   default     = {}
 }
+
+variable "allow_unauthenticated" {
+  description = "Allow unauthenticated access to the service"
+  type        = bool
+  default     = false
+}

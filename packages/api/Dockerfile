@@ -41,6 +41,13 @@ COPY --from=builder /app/packages/core/package.json ./packages/core/
 COPY --from=builder /app/packages/api/dist ./packages/api/dist
 COPY --from=builder /app/packages/api/package.json ./packages/api/
 
+# Symlink src -> dist so @mycel/*/src/* imports resolve to compiled output
+RUN ln -s dist packages/shared/src && \
+    ln -s dist packages/schemas/src && \
+    ln -s dist packages/ingestion/src && \
+    ln -s dist packages/core/src && \
+    ln -s dist packages/api/src
+
 EXPOSE 8080
 ENV PORT=8080
 CMD ["node", "packages/api/dist/index.js"]

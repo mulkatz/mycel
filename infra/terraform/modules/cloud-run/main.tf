@@ -9,6 +9,10 @@ resource "google_cloud_run_v2_service" "mycel" {
     containers {
       image = var.image
 
+      ports {
+        container_port = 8080
+      }
+
       dynamic "env" {
         for_each = var.environment_variables
         content {
@@ -19,9 +23,18 @@ resource "google_cloud_run_v2_service" "mycel" {
 
       resources {
         limits = {
-          cpu    = "2"
-          memory = "1Gi"
+          cpu    = "1"
+          memory = "512Mi"
         }
+      }
+
+      startup_probe {
+        http_get {
+          path = "/health"
+        }
+        initial_delay_seconds = 0
+        period_seconds        = 3
+        failure_threshold     = 10
       }
     }
 
@@ -29,5 +42,16 @@ resource "google_cloud_run_v2_service" "mycel" {
       min_instance_count = 0
       max_instance_count = var.max_instance_count
     }
+
+    timeout = "120s"
   }
+}
+
+resource "google_cloud_run_v2_service_iam_member" "public" {
+  count    = var.allow_unauthenticated ? 1 : 0
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.mycel.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }

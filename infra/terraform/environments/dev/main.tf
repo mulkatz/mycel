@@ -43,20 +43,21 @@ module "iam" {
   depends_on = [google_project_service.apis]
 }
 
-# Uncomment when API layer container is available
-# module "cloud_run" {
-#   source = "../../modules/cloud-run"
-#
-#   project_id            = var.project_id
-#   region                = var.region
-#   image                 = "${module.artifact_registry.repository_url}/api:latest"
-#   service_account_email = module.iam.cloud_run_service_account_email
-#   max_instance_count    = 2
-#
-#   environment_variables = {
-#     MYCEL_GCP_PROJECT_ID = var.project_id
-#     FIRESTORE_DATABASE   = module.firestore.database_name
-#   }
-#
-#   depends_on = [google_project_service.apis]
-# }
+module "cloud_run" {
+  source = "../../modules/cloud-run"
+
+  project_id            = var.project_id
+  region                = var.region
+  image                 = "${module.artifact_registry.repository_url}/api:latest"
+  service_account_email = module.iam.cloud_run_service_account_email
+  max_instance_count    = 2
+  allow_unauthenticated = true
+
+  environment_variables = {
+    MYCEL_GCP_PROJECT_ID = var.project_id
+    VERTEX_AI_LOCATION   = "europe-west1"
+    NODE_ENV             = "production"
+  }
+
+  depends_on = [google_project_service.apis]
+}

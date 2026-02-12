@@ -21,6 +21,7 @@ Before starting any task from the backlog:
 - [x] Terraform deployment (dev environment on GCP: Firestore, Cloud Run, IAM, Artifact Registry)
 - [x] API layer (Cloud Run HTTP entrypoint, request/response contracts, proactive greeting)
 - [x] RAG foundation (embedding generation, Firestore vector search, Context Dispatcher)
+- [x] Cloud Run deployment (Dockerfile, Artifact Registry push, Terraform Cloud Run module, deploy script, public dev access)
 
 ## In Progress
 
@@ -30,6 +31,8 @@ Before starting any task from the backlog:
 - [ ] Audio ingestion (Speech-to-Text via Vertex AI → pipeline)
 - [ ] Image ingestion (Vision API → pipeline)
 - [ ] Authentication and multi-tenancy
+- [ ] Cloud Run hardening (deletion protection, ingress restrictions, Cloud Armor)
+- [ ] Resolve `src → dist` symlink workaround in Dockerfile (refactor to package.json exports or bundler)
 - [ ] Monitoring and observability
 
 ## Known Issues (conversation quality, iterative improvement)

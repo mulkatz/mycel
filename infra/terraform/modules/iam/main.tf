@@ -15,3 +15,9 @@ resource "google_project_iam_member" "cloud_run_log_writer" {
   role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.cloud_run.email}"
 }
+
+resource "google_project_iam_member" "cloud_run_aiplatform_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.cloud_run.email}"
+}
