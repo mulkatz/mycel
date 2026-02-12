@@ -115,6 +115,11 @@ mycel/
 - [ADR-002: GCP Infrastructure](docs/adr/002-gcp-infrastructure.md)
 - [ADR-003: Multi-Agent Architecture](docs/adr/003-multi-agent-architecture.md)
 - [ADR-004: Adaptive Schema Evolution](docs/adr/004-adaptive-schema-evolution.md)
+- [ADR-005: Document Generator](docs/adr/005-document-generator.md)
+- [ADR-006: Persistence Layer — Firestore](docs/adr/006-persistence-layer-firestore.md)
+- [ADR-007: RAG Foundation — Firestore Vector Search](docs/adr/007-rag-foundation-firestore-vector-search.md)
+- [ADR-008: API Layer — Hono on Cloud Run](docs/adr/008-api-layer-hono-cloud-run.md)
+- [ADR-009: Conversation Quality — Intent-Aware Pipeline](docs/adr/009-conversation-quality-intent-aware-pipeline.md)
 
 ## License
 

@@ -87,14 +87,19 @@ Monorepo with five packages:
 - Keep the dependency tree minimal – avoid adding packages for trivial functionality
 
 ## Documentation Rules
-- CLAUDE.md is the single source of truth for AI context
-- Only document what would cause incorrect decisions if missing
+- CLAUDE.md is the single source of truth for AI context — only document what would cause incorrect decisions if missing
 - CLAUDE.md updates must be minimal diffs, not rewrites
-- ADRs only for decisions where the "why" is non-obvious
-- No package-level READMEs
-- No inline comments explaining obvious code
+- No package-level READMEs, no inline comments explaining obvious code
 - JSDoc only on public interfaces with non-obvious contracts
-- When in doubt, don't document – the code should speak for itself
+- When in doubt, don't document — the code should speak for itself
+- For architectural decisions (new service, storage strategy, API design, LLM usage pattern), create an ADR in `docs/adr/`
+- ADRs are numbered sequentially — check existing ADRs before creating a new one
+- An ADR is warranted when: adding a new component/service, choosing between alternatives, changing data models, or introducing new infrastructure
+- Naming: ADRs `docs/adr/{NNN}-{kebab-case-title}.md`, Plans `docs/plans/{NNN}-{kebab-case-title}.md`
+
+### Naming Conventions
+- ADRs: `docs/adr/{NNN}-{kebab-case-title}.md` — numbered sequentially
+- Plans: `docs/plans/{NNN}-{kebab-case-title}.md` — numbered in chronological order of completion
 
 ## CLAUDE.md Update Triggers
 Update CLAUDE.md ONLY when:
