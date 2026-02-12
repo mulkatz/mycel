@@ -14,7 +14,9 @@ export function createDocumentRoutes(deps: DocumentRouteDeps): Hono<AppEnv> {
   docs.post('/:domainSchemaId/documents/generate', async (c) => {
     const { domainSchemaId } = c.req.param();
 
-    const domainSchema = await deps.schemaRepository.getDomainSchemaByName(domainSchemaId);
+    const domainSchema =
+      (await deps.schemaRepository.getDomainSchemaByName(domainSchemaId)) ??
+      (await deps.schemaRepository.getDomainSchema(domainSchemaId));
     if (!domainSchema) {
       return c.json(
         {
