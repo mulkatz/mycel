@@ -54,15 +54,16 @@ function createMockFirestore(): Firestore {
   const store = new Map<string, Record<string, unknown>>();
 
   const mockDoc = (path: string) => ({
-    set: vi.fn(async (data: Record<string, unknown>) => {
+    set: vi.fn((data: Record<string, unknown>) => {
       store.set(path, data);
+      return Promise.resolve();
     }),
-    get: vi.fn(async () => {
+    get: vi.fn(() => {
       const data = store.get(path);
-      return {
+      return Promise.resolve({
         exists: !!data,
         data: () => data,
-      };
+      });
     }),
   });
 
@@ -99,7 +100,7 @@ describe('createDocumentGenerator', () => {
     }));
 
     const mockTextLlm: TextLlmClient = {
-      invoke: vi.fn().mockImplementation(async (req: { userMessage: string }) => {
+      invoke: vi.fn().mockImplementation((req: { userMessage: string }) => {
         if (req.userMessage.includes('History')) {
           return { content: '# History & Heritage\n\nThe old church was built in 1732.\n' };
         }

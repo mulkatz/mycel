@@ -14,7 +14,7 @@ export type FirestoreBase = Firestore | DocumentReference;
  */
 export function getFirestoreClient(base: FirestoreBase): Firestore {
   if ('runTransaction' in base) {
-    return base as Firestore;
+    return base;
   }
   return (base as DocumentReference).firestore;
 }

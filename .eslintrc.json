@@ -29,5 +29,14 @@
     "@typescript-eslint/no-non-null-assertion": "error",
     "@typescript-eslint/consistent-type-imports": "error"
   },
+  "overrides": [
+    {
+      "files": ["*.test.ts"],
+      "rules": {
+        "@typescript-eslint/unbound-method": "off",
+        "@typescript-eslint/no-non-null-assertion": "off"
+      }
+    }
+  ],
   "ignorePatterns": ["dist/", "node_modules/", "*.js"]
 }

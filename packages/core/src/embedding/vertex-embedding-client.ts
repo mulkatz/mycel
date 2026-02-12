@@ -51,7 +51,7 @@ export function createVertexEmbeddingClient(): EmbeddingClient {
         instances,
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       const rawPredictions: unknown[] | undefined = response?.predictions;
       if (!rawPredictions || rawPredictions.length !== texts.length) {
         log.error({ predictions: rawPredictions }, 'Unexpected embedding response');
@@ -65,7 +65,7 @@ export function createVertexEmbeddingClient(): EmbeddingClient {
         const prediction = helpers.fromValue(raw as Parameters<typeof helpers.fromValue>[0]) as {
           embeddings?: { values?: number[] };
         };
-        const values = prediction?.embeddings?.values;
+        const values = prediction.embeddings?.values;
         if (!values || values.length !== EMBEDDING_DIMENSION) {
           log.error({ prediction }, 'Unexpected embedding structure');
           throw new LlmError(

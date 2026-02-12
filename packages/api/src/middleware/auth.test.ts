@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { SignJWT, generateKeyPair, exportJWK } from 'jose';
+import { SignJWT, generateKeyPair } from 'jose';
 import type { KeyLike } from 'jose';
 import { createAuthMiddleware } from './auth.js';
 
@@ -11,7 +11,7 @@ interface TestKeys {
   publicKey: KeyLike;
 }
 
-let testKeys: TestKeys;
+let testKeys: TestKeys | undefined;
 
 async function setupKeys(): Promise<TestKeys> {
   if (!testKeys) {

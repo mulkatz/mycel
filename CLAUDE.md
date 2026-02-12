@@ -47,6 +47,12 @@ Monorepo with five packages:
 - Route handlers get repos from `c.get('tenantRepos')`, not from closure deps
 - `createTestApp()` helper in `packages/api/src/test-helpers.ts` bypasses auth for unit tests
 
+## API Documentation
+- All routes use `@hono/zod-openapi` — define routes with `createRoute()` and register with `app.openapi()`
+- Request/response Zod schemas live in `packages/api/src/schemas/` and are tagged with `.openapi('Name')`
+- `npm run generate:openapi` outputs `openapi.json` at repo root (committed)
+- Scalar API Reference UI served at `/docs`, OpenAPI spec at `/openapi.json` — both public (no auth)
+
 ## Code Conventions
 - All code and comments in English
 - Strict TypeScript: no `any`, explicit return types, no unused variables

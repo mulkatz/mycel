@@ -54,7 +54,7 @@ function buildTurnSummary(
   result: PipelineState,
 ): TurnSummary {
   const gaps = result.gapReasoningOutput?.result.gaps.map((g) => g.field) ?? [];
-  const filledFields = Object.keys(result.structuringOutput?.result.entry?.structuredData ?? {});
+  const filledFields = Object.keys(result.structuringOutput?.result.entry.structuredData ?? {});
   return {
     turnNumber,
     userInput: input.content,

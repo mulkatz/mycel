@@ -28,16 +28,17 @@ Before starting any task from the backlog:
 - [x] Conversational Schema Evolution — Phase 2 of 3 (pattern detection via embedding clustering, evolution proposals for new categories/fields/priority changes, field stats tracking, auto mode, schema-evolution-log)
 - [x] Real-time Web Enrichment — Phase 3 of 3 (async claim extraction + validation during conversations, 7-day search cache, conflict flagging, enrichment metadata on Knowledge Entries, Context Dispatcher integration with verification markers)
 - [x] Authentication and multi-tenancy (GCP Identity Platform anonymous auth, JWT validation via `jose`, tenant-scoped Firestore under `tenants/{tenantId}/`, migration script)
+- [x] OpenAPI spec & Scalar API docs (`@hono/zod-openapi` route-level validation, `npm run generate:openapi`, Scalar UI at `/docs`)
 
 ## In Progress
 
 ## Backlog (ordered by priority)
+- [ ] Frontend (Chat UI for knowledge contributors, Admin Dashboard for schema management + document browsing)
 - [ ] Audio ingestion (Speech-to-Text via Vertex AI → pipeline)
 - [ ] Image ingestion (Vision API → pipeline)
 - [ ] Cloud Run hardening (deletion protection, ingress restrictions, Cloud Armor)
 - [ ] Resolve `src → dist` symlink workaround in Dockerfile (refactor to package.json exports or bundler)
 - [ ] Monitoring and observability
-- [ ] Frontend (Chat UI for knowledge contributors, Admin Dashboard for schema management + document browsing)
 
 ## Known Limitations
 - [ ] `new_field` evolution proposals: infrastructure ready but not yet auto-triggered (only new_category and change_priority trigger automatically)
