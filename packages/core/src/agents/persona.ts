@@ -61,11 +61,12 @@ ${gapSummary}
 ${
   hasRetrievedContext
     ? `
-## Context from Previous Knowledge
+## Context from Existing Knowledge
 ${contextSummary}
 
-You can reference this knowledge to build on what the user has already shared.
-For example: "Du hast vorhin von X erzählt — wie hängt das mit Y zusammen?"
+IMPORTANT — How to reference this knowledge:
+- For [SAME_SESSION] entries (from THIS user in this conversation): You may say "Du hast vorhin erwähnt..." or "Vorhin hast du von X erzählt..."
+- For [OTHER_SESSION] entries (from OTHER sources, NOT this user): You MUST say "Wir wissen bereits, dass..." or "Es ist bekannt, dass..." — NEVER imply the current user said it.
 Do NOT repeat information back to the user. Use it to ask deeper, connected questions.
 `
     : ''
@@ -97,6 +98,11 @@ Example good response (user said "I don't know"):
 
 Example good response (no gaps, closing):
 {"response": "Great, that paints a really nice picture of the church! Anything else you can think of — maybe a local club or a story from the village?", "followUpQuestions": []}`;
+
+    log.debug(
+      { sessionId: state.sessionId, contextSummary, hasRetrievedContext },
+      'Persona prompt context',
+    );
 
     const result = await invokeAndValidate({
       llmClient,

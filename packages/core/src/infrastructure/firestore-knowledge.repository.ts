@@ -16,7 +16,7 @@ import { createChildLogger } from '@mycel/shared/src/logger.js';
 const log = createChildLogger('firestore:knowledge');
 
 const COLLECTION = 'knowledgeEntries';
-const MIN_SIMILARITY_SCORE = 0.7;
+const MIN_SIMILARITY_SCORE = 0.5;
 const DEFAULT_SEARCH_LIMIT = 5;
 
 interface KnowledgeEntryDocument {
@@ -172,18 +172,33 @@ export function createFirestoreKnowledgeRepository(db: Firestore): KnowledgeRepo
     }): Promise<readonly KnowledgeSearchResult[]> {
       const limit = params.limit ?? DEFAULT_SEARCH_LIMIT;
 
+      log.info(
+        {
+          domainSchemaId: params.domainSchemaId,
+          embeddingLength: params.embedding.length,
+          limit,
+          excludeSessionId: params.excludeSessionId,
+        },
+        'searchSimilar: query parameters',
+      );
+
       try {
         const query = collectionRef.where('domainSchemaId', '==', params.domainSchemaId);
 
         const snapshot = await query
           .findNearest({
             vectorField: 'embedding',
-            queryVector: FieldValue.vector([...params.embedding]),
+            queryVector: params.embedding as number[],
             limit,
             distanceMeasure: 'COSINE',
             distanceResultField: '__distance',
           })
           .get();
+
+        log.info(
+          { docCount: snapshot.docs.length },
+          'searchSimilar: raw findNearest response',
+        );
 
         const results: KnowledgeSearchResult[] = [];
 
@@ -194,6 +209,20 @@ export function createFirestoreKnowledgeRepository(db: Firestore): KnowledgeRepo
           // Convert to similarity: 1 - distance
           const score = distance !== undefined ? 1 - distance : 0;
 
+          log.info(
+            {
+              docId: doc.id,
+              distance,
+              score,
+              sessionId: data['sessionId'],
+              belowMinScore: score < MIN_SIMILARITY_SCORE,
+              excludedBySession:
+                params.excludeSessionId !== undefined &&
+                data['sessionId'] === params.excludeSessionId,
+            },
+            'searchSimilar: candidate document',
+          );
+
           if (score < MIN_SIMILARITY_SCORE) continue;
           if (params.excludeSessionId && data['sessionId'] === params.excludeSessionId) continue;
 
@@ -203,12 +232,12 @@ export function createFirestoreKnowledgeRepository(db: Firestore): KnowledgeRepo
           });
         }
 
+        log.info({ resultCount: results.length }, 'searchSimilar: final results');
         return results;
       } catch (error) {
-        // Firestore emulator may not support findNearest — graceful fallback
-        log.warn(
+        log.error(
           { error: error instanceof Error ? error.message : String(error) },
-          'Vector search failed, returning empty results (emulator may not support findNearest)',
+          'searchSimilar: vector search failed',
         );
         return [];
       }

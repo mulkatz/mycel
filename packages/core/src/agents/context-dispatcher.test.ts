@@ -64,6 +64,7 @@ describe('createContextDispatcherNode', () => {
 
     const mockEntry = {
       id: 'entry-1',
+      sessionId: 'other-session',
       categoryId: 'history',
       title: 'Old Church',
       content: 'The old church was built in 1732.',
@@ -93,12 +94,68 @@ describe('createContextDispatcherNode', () => {
       domainSchemaId: 'test-domain',
       embedding: createMockEmbedding(),
       limit: 5,
-      excludeSessionId: 'test-session',
     });
 
     expect(result.contextDispatcherOutput?.result.relevantContext).toHaveLength(1);
     expect(result.contextDispatcherOutput?.result.contextSummary).toContain('Old Church');
     expect(result.contextDispatcherOutput?.result.contextSummary).toContain('0.85');
+    expect(result.contextDispatcherOutput?.result.contextSummary).toContain('[OTHER_SESSION]');
+  });
+
+  it('should tag same-session results as SAME_SESSION', async () => {
+    const mockEmbeddingClient: EmbeddingClient = {
+      generateEmbedding: vi.fn().mockResolvedValue(createMockEmbedding()),
+      generateEmbeddings: vi.fn(),
+    };
+
+    const sameSessionEntry = {
+      id: 'entry-same',
+      sessionId: 'test-session',
+      categoryId: 'history',
+      title: 'Village Square',
+      content: 'The village square has a fountain.',
+      source: { type: 'text' as const },
+      structuredData: {},
+      tags: ['history'],
+      metadata: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const otherSessionEntry = {
+      id: 'entry-other',
+      sessionId: 'other-session',
+      categoryId: 'history',
+      title: 'Old Church',
+      content: 'The old church was built in 1732.',
+      source: { type: 'text' as const },
+      structuredData: {},
+      tags: ['history'],
+      metadata: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const mockKnowledgeRepo = {
+      searchSimilar: vi.fn().mockResolvedValue([
+        { entry: sameSessionEntry, score: 0.9 },
+        { entry: otherSessionEntry, score: 0.8 },
+      ]),
+    } as unknown as KnowledgeRepository;
+
+    const node = createContextDispatcherNode({
+      embeddingClient: mockEmbeddingClient,
+      knowledgeRepository: mockKnowledgeRepo,
+      domainSchemaId: 'test-domain',
+    });
+
+    const result = await node(createMockState());
+    const summary = result.contextDispatcherOutput?.result.contextSummary ?? '';
+
+    expect(summary).toContain('[SAME_SESSION]');
+    expect(summary).toContain('[OTHER_SESSION]');
+    expect(summary).toContain('Village Square');
+    expect(summary).toContain('Old Church');
   });
 
   it('should gracefully handle embedding failure', async () => {
@@ -120,7 +177,7 @@ describe('createContextDispatcherNode', () => {
     const result = await node(createMockState());
 
     expect(result.contextDispatcherOutput?.result.relevantContext).toEqual([]);
-    expect(result.contextDispatcherOutput?.result.contextSummary).toContain('No related knowledge');
+    expect(result.contextDispatcherOutput?.result.contextSummary).toContain('No related knowledge found');
   });
 
   it('should gracefully handle search failure', async () => {

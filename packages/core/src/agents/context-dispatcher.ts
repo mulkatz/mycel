@@ -14,21 +14,45 @@ export interface ContextDispatcherDeps {
   readonly domainSchemaId: string;
 }
 
-function buildContextSummary(results: readonly KnowledgeSearchResult[]): string {
+function buildContextSummary(
+  results: readonly KnowledgeSearchResult[],
+  currentSessionId: string,
+): string {
   if (results.length === 0) {
-    return 'No related knowledge found in previous sessions.';
+    return 'No related knowledge found.';
   }
 
-  const entries = results
-    .map((r) => {
-      const category = r.entry.categoryId !== '_uncategorized' ? `[${r.entry.categoryId}] ` : '';
-      const content =
-        r.entry.content.length > 150 ? r.entry.content.slice(0, 150) + '...' : r.entry.content;
-      return `- ${category}${r.entry.title} (relevance: ${r.score.toFixed(2)}): ${content}`;
-    })
-    .join('\n');
+  const sameSession: string[] = [];
+  const otherSession: string[] = [];
 
-  return `Related knowledge already captured:\n${entries}`;
+  for (const r of results) {
+    const category = r.entry.categoryId !== '_uncategorized' ? `[${r.entry.categoryId}] ` : '';
+    const content =
+      r.entry.content.length > 150 ? r.entry.content.slice(0, 150) + '...' : r.entry.content;
+    const line = `- ${category}${r.entry.title} (relevance: ${r.score.toFixed(2)}): ${content}`;
+
+    if (r.entry.sessionId === currentSessionId) {
+      sameSession.push(line);
+    } else {
+      otherSession.push(line);
+    }
+  }
+
+  const sections: string[] = [];
+
+  if (sameSession.length > 0) {
+    sections.push(
+      `[SAME_SESSION] Knowledge shared by this user earlier in this conversation:\n${sameSession.join('\n')}`,
+    );
+  }
+
+  if (otherSession.length > 0) {
+    sections.push(
+      `[OTHER_SESSION] Knowledge from other sources (NOT from this user):\n${otherSession.join('\n')}`,
+    );
+  }
+
+  return sections.join('\n\n');
 }
 
 export function createContextDispatcherNode(
@@ -69,7 +93,6 @@ export function createContextDispatcherNode(
         domainSchemaId: deps.domainSchemaId,
         embedding,
         limit: 5,
-        excludeSessionId: state.sessionId,
       });
 
       log.info(
@@ -89,7 +112,7 @@ export function createContextDispatcherNode(
       );
     }
 
-    const contextSummary = buildContextSummary(relevantContext);
+    const contextSummary = buildContextSummary(relevantContext, state.sessionId);
 
     const contextDispatcherOutput: ContextDispatcherOutput = {
       agentRole: 'context-dispatcher',
