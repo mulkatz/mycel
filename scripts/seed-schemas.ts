@@ -4,15 +4,20 @@ import { createFirestoreClient } from '@mycel/core/src/infrastructure/firestore-
 import { createFirestoreSchemaRepository } from '@mycel/core/src/infrastructure/firestore-schema.repository.js';
 
 async function main(): Promise<void> {
-  const configDir = process.argv[2] ?? resolve(process.cwd(), 'config');
+  const tenantIdFlag = process.argv.find((a) => a.startsWith('--tenant-id='));
+  const tenantId = tenantIdFlag?.split('=')[1];
+  const positionalArgs = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+  const configDir = positionalArgs.length > 0 ? positionalArgs[0] : resolve(process.cwd(), 'config');
 
   console.log('=== Mycel Schema Seeder ===\n');
   console.log(`Config directory: ${configDir}`);
+  console.log(`Tenant: ${tenantId ?? '(root — legacy mode)'}`);
   console.log(`Firestore emulator: ${process.env['FIRESTORE_EMULATOR_HOST'] ?? 'not set (using real Firestore)'}\n`);
 
   const appConfig = await loadConfig(configDir);
   const db = createFirestoreClient();
-  const schemaRepo = createFirestoreSchemaRepository(db);
+  const base = tenantId ? db.collection('tenants').doc(tenantId) : db;
+  const schemaRepo = createFirestoreSchemaRepository(base);
 
   // Check for existing active schemas
   const existingDomain = await schemaRepo.getActiveDomainSchema();

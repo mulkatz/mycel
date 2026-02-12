@@ -48,8 +48,13 @@ if [ -z "$ID_TOKEN" ]; then
   exit 1
 fi
 
+ANON_UID=$(echo "$TOKEN_RESPONSE" | jq -r '.localId // empty')
 AUTH_HEADER="Authorization: Bearer ${ID_TOKEN}"
-echo "   Token obtained (anonymous user)"
+echo "   Token obtained (anonymous user: ${ANON_UID})"
+
+# Seed persona schema for this tenant
+echo "🌱 Seeding persona schema for tenant ${ANON_UID}..."
+npx tsx scripts/seed-schemas.ts --tenant-id="${ANON_UID}" 2>&1 | sed 's/^/   /'
 
 echo "🍄 Mycel E2E Test Suite"
 echo "   Target: $SERVICE_URL"
