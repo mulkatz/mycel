@@ -48,35 +48,34 @@ async function migrateCollection(
 
     if (targetDoc.exists) {
       skipped++;
-      continue;
-    }
+    } else {
+      const sourceDoc = await sourceDocRef.get();
+      if (!sourceDoc.exists) {
+        continue;
+      }
 
-    const sourceDoc = await sourceDocRef.get();
-    if (!sourceDoc.exists) {
-      continue;
-    }
+      await targetDocRef.set(sourceDoc.data()!);
+      copied++;
 
-    await targetDocRef.set(sourceDoc.data()!);
-    copied++;
-
-    // Copy subcollections
-    const subcollections = SUBCOLLECTIONS[collectionName] ?? [];
-    for (const subName of subcollections) {
-      const subDocs = await sourceDocRef.collection(subName).listDocuments();
-      for (const subDocRef of subDocs) {
-        const subData = await subDocRef.get();
-        if (subData.exists) {
-          const targetSubRef = targetDocRef.collection(subName).doc(subDocRef.id);
-          const targetSub = await targetSubRef.get();
-          if (!targetSub.exists) {
-            await targetSubRef.set(subData.data()!);
+      // Copy subcollections
+      const subcollections = SUBCOLLECTIONS[collectionName] ?? [];
+      for (const subName of subcollections) {
+        const subDocs = await sourceDocRef.collection(subName).listDocuments();
+        for (const subDocRef of subDocs) {
+          const subData = await subDocRef.get();
+          if (subData.exists) {
+            const targetSubRef = targetDocRef.collection(subName).doc(subDocRef.id);
+            const targetSub = await targetSubRef.get();
+            if (!targetSub.exists) {
+              await targetSubRef.set(subData.data()!);
+            }
           }
         }
       }
     }
 
     if (deleteOriginals) {
-      // Delete subcollections first
+      const subcollections = SUBCOLLECTIONS[collectionName] ?? [];
       for (const subName of subcollections) {
         const subDocs = await sourceDocRef.collection(subName).listDocuments();
         for (const subDocRef of subDocs) {
