@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Hono } from 'hono';
+import type { OpenAPIHono } from '@hono/zod-openapi';
 import { createInMemorySessionRepository } from '@mycel/core/src/repositories/in-memory-session.repository.js';
 import { createInMemoryKnowledgeRepository } from '@mycel/core/src/repositories/in-memory-knowledge.repository.js';
 import { createInMemorySchemaRepository } from '@mycel/core/src/repositories/in-memory-schema.repository.js';
@@ -9,7 +9,7 @@ import { createTestApp } from '../test-helpers.js';
 import type { AppEnv } from '../types.js';
 
 describe('Entry API Routes', () => {
-  let app: Hono<AppEnv>;
+  let app: OpenAPIHono<AppEnv>;
   let knowledgeRepo: ReturnType<typeof createInMemoryKnowledgeRepository>;
 
   beforeEach(() => {

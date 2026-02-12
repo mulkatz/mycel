@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Hono } from 'hono';
+import type { OpenAPIHono } from '@hono/zod-openapi';
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
 import type { DomainBehaviorConfig } from '@mycel/schemas/src/domain-behavior.schema.js';
 import { createInMemorySessionRepository } from '@mycel/core/src/repositories/in-memory-session.repository.js';
@@ -51,7 +51,7 @@ function jsonPost(path: string, body: Record<string, unknown>): RequestInit {
 }
 
 describe('Evolution API Routes', () => {
-  let app: Hono<AppEnv>;
+  let app: OpenAPIHono<AppEnv>;
   let proposalRepo: ReturnType<typeof createInMemoryEvolutionProposalRepository>;
   let fieldStatsRepo: ReturnType<typeof createInMemoryFieldStatsRepository>;
   let schemaRepo: ReturnType<typeof createInMemorySchemaRepository>;

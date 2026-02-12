@@ -1,8 +1,8 @@
 import type { Firestore } from '@google-cloud/firestore';
-import { Hono } from 'hono';
+import type { OpenAPIHono } from '@hono/zod-openapi';
 import { cors } from 'hono/cors';
 import type { SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositories.js';
-import type { AppEnv } from './types.js';
+import { createRouter, type AppEnv } from './types.js';
 import { requestId } from './middleware/request-id.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { createAuthMiddleware } from './middleware/auth.js';
@@ -23,8 +23,8 @@ export interface AppConfig {
   readonly sharedDeps: SharedDeps;
 }
 
-export function createApp(config: AppConfig): Hono<AppEnv> {
-  const app = new Hono<AppEnv>();
+export function createApp(config: AppConfig): OpenAPIHono<AppEnv> {
+  const app = createRouter();
 
   app.use('*', cors());
   app.use('*', requestId);

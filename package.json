@@ -24,7 +24,8 @@
     "test:integration": "FIRESTORE_EMULATOR_HOST=localhost:8080 MYCEL_GCP_PROJECT_ID=mycel-test vitest run --config vitest.integration.config.ts",
     "emulator:start": "gcloud emulators firestore start --host-port=localhost:8080",
     "seed:schemas": "npx tsx scripts/seed-schemas.ts",
-    "dev:api": "MYCEL_MOCK_LLM=true npx tsx packages/api/src/index.ts"
+    "dev:api": "MYCEL_MOCK_LLM=true npx tsx packages/api/src/index.ts",
+    "generate:openapi": "npx tsx scripts/generate-openapi.ts > openapi.json"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",

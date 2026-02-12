@@ -1,7 +1,7 @@
-import { Hono } from 'hono';
+import type { OpenAPIHono } from '@hono/zod-openapi';
 import { cors } from 'hono/cors';
 import type { TenantRepositories } from '@mycel/core/src/infrastructure/tenant-repositories.js';
-import type { AppEnv } from './types.js';
+import { createRouter, type AppEnv } from './types.js';
 import { requestId } from './middleware/request-id.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { health } from './routes/health.js';
@@ -19,8 +19,8 @@ import type { SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositor
 export function createTestApp(
   tenantRepos: TenantRepositories,
   sharedDeps: SharedDeps,
-): Hono<AppEnv> {
-  const app = new Hono<AppEnv>();
+): OpenAPIHono<AppEnv> {
+  const app = createRouter();
 
   app.use('*', cors());
   app.use('*', requestId);

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Hono } from 'hono';
+import type { OpenAPIHono } from '@hono/zod-openapi';
 import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
 import { createInMemorySchemaProposalRepository } from '@mycel/core/src/repositories/in-memory-schema-proposal.repository.js';
 import { createInMemorySchemaRepository } from '@mycel/core/src/repositories/in-memory-schema.repository.js';
@@ -61,7 +61,7 @@ function jsonPost(path: string, body: Record<string, unknown>): RequestInit {
 }
 
 describe('Schema Generator API Routes', () => {
-  let app: Hono<AppEnv>;
+  let app: OpenAPIHono<AppEnv>;
 
   beforeEach(() => {
     const llmClient = createMockLlm();

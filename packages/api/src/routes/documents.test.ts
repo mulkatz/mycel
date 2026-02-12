@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Hono } from 'hono';
+import type { OpenAPIHono } from '@hono/zod-openapi';
 import type { DocumentGenerator, GeneratedDocument } from '@mycel/core/src/services/document-generator/types.js';
 import { createInMemorySchemaRepository } from '@mycel/core/src/repositories/in-memory-schema.repository.js';
 import type { SchemaRepository } from '@mycel/core/src/repositories/schema.repository.js';
@@ -51,7 +51,7 @@ const mockDocument: GeneratedDocument = {
 };
 
 describe('Document Routes', () => {
-  let app: Hono<AppEnv>;
+  let app: OpenAPIHono<AppEnv>;
   let schemaRepo: SchemaRepository;
   let mockGenerator: DocumentGenerator;
 

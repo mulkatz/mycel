@@ -1,0 +1,1924 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mycel API",
+    "version": "1.0.0",
+    "description": "AI-powered Universal Knowledge Engine API"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development"
+    }
+  ],
+  "security": [
+    {
+      "Bearer": []
+    }
+  ],
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version"
+        ]
+      },
+      "CreateSessionResponse": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active"
+            ]
+          },
+          "greeting": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "status",
+          "greeting"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "error",
+          "code",
+          "requestId"
+        ]
+      },
+      "TurnResponse": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "turnIndex": {
+            "type": "number"
+          },
+          "response": {
+            "type": "string"
+          },
+          "knowledgeExtracted": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "turnIndex",
+          "response",
+          "knowledgeExtracted",
+          "status"
+        ]
+      },
+      "SessionDetailResponse": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "turnCount": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "knowledgeEntryCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sessionId",
+          "status",
+          "turnCount",
+          "createdAt",
+          "updatedAt",
+          "knowledgeEntryCount"
+        ]
+      },
+      "EndSessionResponse": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "turnCount": {
+            "type": "number"
+          },
+          "knowledgeEntryCount": {
+            "type": "number"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "status",
+          "turnCount",
+          "knowledgeEntryCount",
+          "summary"
+        ]
+      },
+      "DocumentGenerateResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed"
+            ]
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "generatedAt": {
+                "type": "string"
+              },
+              "domainSchemaId": {
+                "type": "string"
+              },
+              "contentLanguage": {
+                "type": "string"
+              },
+              "totalEntries": {
+                "type": "number"
+              },
+              "totalChapters": {
+                "type": "number"
+              },
+              "chaptersWithContent": {
+                "type": "number"
+              },
+              "chaptersEmpty": {
+                "type": "number"
+              },
+              "gapsIdentified": {
+                "type": "number"
+              },
+              "sourceEntryIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "generationDurationMs": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "generatedAt",
+              "domainSchemaId",
+              "contentLanguage",
+              "totalEntries",
+              "totalChapters",
+              "chaptersWithContent",
+              "chaptersEmpty",
+              "gapsIdentified",
+              "sourceEntryIds",
+              "generationDurationMs"
+            ]
+          },
+          "chapters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "filename": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "entryCount": {
+                  "type": "number"
+                },
+                "gapCount": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "filename",
+                "title",
+                "entryCount",
+                "gapCount"
+              ]
+            }
+          }
+        },
+        "required": [
+          "status",
+          "meta",
+          "chapters"
+        ]
+      },
+      "DocumentMetaResponse": {
+        "type": "object",
+        "properties": {
+          "generatedAt": {
+            "type": "string"
+          },
+          "domainSchemaId": {
+            "type": "string"
+          },
+          "contentLanguage": {
+            "type": "string"
+          },
+          "totalEntries": {
+            "type": "number"
+          },
+          "totalChapters": {
+            "type": "number"
+          },
+          "chaptersWithContent": {
+            "type": "number"
+          },
+          "chaptersEmpty": {
+            "type": "number"
+          },
+          "gapsIdentified": {
+            "type": "number"
+          },
+          "sourceEntryIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "generationDurationMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "generatedAt",
+          "domainSchemaId",
+          "contentLanguage",
+          "totalEntries",
+          "totalChapters",
+          "chaptersWithContent",
+          "chaptersEmpty",
+          "gapsIdentified",
+          "sourceEntryIds",
+          "generationDurationMs"
+        ]
+      },
+      "SchemaGenerateResponse": {
+        "type": "object",
+        "properties": {
+          "proposalId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "requiredFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "optionalFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "origin": {
+                      "type": "string"
+                    },
+                    "sourceUrls": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "description"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "name",
+              "version",
+              "description",
+              "categories"
+            ]
+          },
+          "behavior": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "reasoning": {
+            "type": "string"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "proposalId",
+          "status",
+          "domain",
+          "reasoning"
+        ]
+      },
+      "SchemaReviewResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "domainSchemaId": {
+            "type": "string"
+          },
+          "proposalId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "SchemaProposalResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "behavior": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "reasoning": {
+            "type": "string"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
+      },
+      "EvolutionAnalyzeResponse": {
+        "type": "object",
+        "properties": {
+          "domainSchemaId": {
+            "type": "string"
+          },
+          "proposalCount": {
+            "type": "number"
+          },
+          "proposals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "confidence": {
+                  "type": "number"
+                },
+                "status": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "description",
+                "confidence",
+                "status"
+              ]
+            }
+          }
+        },
+        "required": [
+          "domainSchemaId",
+          "proposalCount",
+          "proposals"
+        ]
+      },
+      "EvolutionProposalDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "newCategory": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "suggestedFields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "description",
+              "suggestedFields"
+            ]
+          },
+          "newField": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "targetCategoryId": {
+                "type": "string"
+              },
+              "fieldName": {
+                "type": "string"
+              },
+              "fieldType": {
+                "type": "string",
+                "enum": [
+                  "required",
+                  "optional"
+                ]
+              },
+              "reasoning": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "targetCategoryId",
+              "fieldName",
+              "fieldType",
+              "reasoning"
+            ]
+          },
+          "changePriority": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "targetCategoryId": {
+                "type": "string"
+              },
+              "fieldName": {
+                "type": "string"
+              },
+              "answerRate": {
+                "type": "number"
+              },
+              "reasoning": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "targetCategoryId",
+              "fieldName",
+              "answerRate",
+              "reasoning"
+            ]
+          },
+          "clusterMetadata": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "clusterSize": {
+                "type": "number"
+              },
+              "sampleEntries": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "appliedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "description",
+          "confidence",
+          "status",
+          "createdAt"
+        ]
+      },
+      "EvolutionProposalsResponse": {
+        "type": "object",
+        "properties": {
+          "domainSchemaId": {
+            "type": "string"
+          },
+          "proposals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvolutionProposalDetail"
+            }
+          }
+        },
+        "required": [
+          "domainSchemaId",
+          "proposals"
+        ]
+      },
+      "EvolutionReviewResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "EvolutionStatsResponse": {
+        "type": "object",
+        "properties": {
+          "domainSchemaId": {
+            "type": "string"
+          },
+          "stats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "categoryId": {
+                  "type": "string"
+                },
+                "fieldName": {
+                  "type": "string"
+                },
+                "timesAsked": {
+                  "type": "number"
+                },
+                "timesAnswered": {
+                  "type": "number"
+                },
+                "answerRate": {
+                  "type": "number"
+                },
+                "lastUpdatedAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "categoryId",
+                "fieldName",
+                "timesAsked",
+                "timesAnswered",
+                "answerRate",
+                "lastUpdatedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "domainSchemaId",
+          "stats"
+        ]
+      },
+      "EntryEnrichmentResponse": {
+        "type": "object",
+        "properties": {
+          "entryId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "enriched",
+              "not_enriched"
+            ]
+          },
+          "enrichment": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "claims": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "claim": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "evidence": {
+                      "type": "string"
+                    },
+                    "confidence": {
+                      "type": "number"
+                    },
+                    "sourceUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "claim",
+                    "status",
+                    "confidence"
+                  ]
+                }
+              },
+              "enrichedAt": {
+                "type": "string"
+              },
+              "searchQueries": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sourceUrls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "claims",
+              "enrichedAt",
+              "searchQueries",
+              "sourceUrls"
+            ]
+          }
+        },
+        "required": [
+          "entryId",
+          "status",
+          "enrichment"
+        ]
+      }
+    },
+    "parameters": {},
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Create a new session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "domainSchemaId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "personaSchemaId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "domainSchemaId",
+                  "personaSchemaId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Session created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Schema not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/turns": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Submit a turn in a session",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "sessionId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userInput": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "userInput"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Turn response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Get session details",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "sessionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/end": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "End a session",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "sessionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session ended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EndSessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/{domainSchemaId}/documents/generate": {
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Generate a knowledge document",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "domainSchemaId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentGenerateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Domain schema not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/{domainSchemaId}/documents/latest": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Get latest document as markdown",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "domainSchemaId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document markdown content",
+            "content": {
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/{domainSchemaId}/documents/latest/meta": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Get latest document metadata",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "domainSchemaId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentMetaResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/{domainSchemaId}/documents/latest/{filename}": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Get a specific chapter as markdown",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "domainSchemaId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "filename",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chapter markdown content",
+            "content": {
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document or chapter not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/generate": {
+      "post": {
+        "tags": [
+          "Schema Generator"
+        ],
+        "summary": "Generate a domain schema proposal",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "minLength": 10
+                  },
+                  "language": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 5
+                  },
+                  "config": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "full_auto",
+                          "balanced"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "schemaCreation": {
+                            "type": "string",
+                            "enum": [
+                              "manual",
+                              "web_research",
+                              "hybrid"
+                            ]
+                          },
+                          "schemaEvolution": {
+                            "type": "string",
+                            "enum": [
+                              "fixed",
+                              "suggest",
+                              "auto"
+                            ]
+                          },
+                          "webSearch": {
+                            "type": "string",
+                            "enum": [
+                              "disabled",
+                              "bootstrap_only",
+                              "enrichment",
+                              "full"
+                            ]
+                          },
+                          "knowledgeValidation": {
+                            "type": "string",
+                            "enum": [
+                              "trust_user",
+                              "flag_conflicts",
+                              "verify"
+                            ]
+                          },
+                          "proactiveQuestioning": {
+                            "type": "string",
+                            "enum": [
+                              "passive",
+                              "gentle",
+                              "active"
+                            ]
+                          },
+                          "documentGeneration": {
+                            "type": "string",
+                            "enum": [
+                              "disabled",
+                              "manual",
+                              "on_session_end",
+                              "threshold"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "schemaCreation",
+                          "schemaEvolution",
+                          "webSearch",
+                          "knowledgeValidation",
+                          "proactiveQuestioning",
+                          "documentGeneration"
+                        ]
+                      }
+                    ]
+                  },
+                  "partialSchema": {
+                    "type": "object",
+                    "properties": {
+                      "categories": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "description": {
+                              "type": "string"
+                            },
+                            "requiredFields": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "optionalFields": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "label",
+                            "description"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "description"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Schema proposal generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaGenerateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/proposals/{proposalId}/review": {
+      "post": {
+        "tags": [
+          "Schema Generator"
+        ],
+        "summary": "Review a schema proposal",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "proposalId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "approve",
+                      "approve_with_changes",
+                      "reject"
+                    ]
+                  },
+                  "modifications": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "categories": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "description": {
+                              "type": "string"
+                            },
+                            "requiredFields": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "optionalFields": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "label",
+                            "description"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "feedback": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "decision"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Review result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaReviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/proposals/{proposalId}": {
+      "get": {
+        "tags": [
+          "Schema Generator"
+        ],
+        "summary": "Get a schema proposal",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "proposalId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schema proposal details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaProposalResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Proposal not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/{domainSchemaId}/evolution/analyze": {
+      "post": {
+        "tags": [
+          "Evolution"
+        ],
+        "summary": "Analyze domain schema for evolution proposals",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "domainSchemaId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Analysis completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvolutionAnalyzeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/{domainSchemaId}/evolution/proposals": {
+      "get": {
+        "tags": [
+          "Evolution"
+        ],
+        "summary": "List evolution proposals for a domain",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "domainSchemaId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of evolution proposals",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvolutionProposalsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/{domainSchemaId}/evolution/proposals/{proposalId}": {
+      "get": {
+        "tags": [
+          "Evolution"
+        ],
+        "summary": "Get a specific evolution proposal",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "domainSchemaId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "proposalId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Evolution proposal details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "confidence": {
+                      "type": "number"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "newCategory": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "suggestedFields": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "label",
+                        "description",
+                        "suggestedFields"
+                      ]
+                    },
+                    "newField": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "targetCategoryId": {
+                          "type": "string"
+                        },
+                        "fieldName": {
+                          "type": "string"
+                        },
+                        "fieldType": {
+                          "type": "string",
+                          "enum": [
+                            "required",
+                            "optional"
+                          ]
+                        },
+                        "reasoning": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "targetCategoryId",
+                        "fieldName",
+                        "fieldType",
+                        "reasoning"
+                      ]
+                    },
+                    "changePriority": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "targetCategoryId": {
+                          "type": "string"
+                        },
+                        "fieldName": {
+                          "type": "string"
+                        },
+                        "answerRate": {
+                          "type": "number"
+                        },
+                        "reasoning": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "targetCategoryId",
+                        "fieldName",
+                        "answerRate",
+                        "reasoning"
+                      ]
+                    },
+                    "clusterMetadata": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "clusterSize": {
+                          "type": "number"
+                        },
+                        "sampleEntries": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "reviewedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "appliedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "description",
+                    "confidence",
+                    "status",
+                    "createdAt"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Proposal not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/{domainSchemaId}/evolution/proposals/{proposalId}/review": {
+      "post": {
+        "tags": [
+          "Evolution"
+        ],
+        "summary": "Review an evolution proposal",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "domainSchemaId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "proposalId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "approve",
+                      "approve_with_changes",
+                      "reject"
+                    ]
+                  },
+                  "feedback": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "decision"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Review result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvolutionReviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/{domainSchemaId}/evolution/stats": {
+      "get": {
+        "tags": [
+          "Evolution"
+        ],
+        "summary": "Get field usage stats for a domain",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "domainSchemaId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Field usage statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvolutionStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entries/{entryId}/enrichment": {
+      "get": {
+        "tags": [
+          "Entries"
+        ],
+        "summary": "Get entry enrichment data",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "entryId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Entry enrichment data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryEnrichmentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Entry not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}

@@ -1,11 +1,136 @@
-import { Hono } from 'hono';
-import type { AppEnv } from '../types.js';
+import { createRoute, z } from '@hono/zod-openapi';
+import type { OpenAPIHono } from '@hono/zod-openapi';
+import { createRouter, type AppEnv } from '../types.js';
+import {
+  ErrorResponseSchema,
+  DocumentGenerateResponseSchema,
+  DocumentMetaResponseSchema,
+} from '../schemas/responses.js';
 
-export function createDocumentRoutes(): Hono<AppEnv> {
-  const docs = new Hono<AppEnv>();
+const DomainSchemaIdParamSchema = z.object({
+  domainSchemaId: z.string().min(1),
+});
 
-  docs.post('/:domainSchemaId/documents/generate', async (c) => {
-    const { domainSchemaId } = c.req.param();
+const generateDocumentRoute = createRoute({
+  method: 'post',
+  path: '/{domainSchemaId}/documents/generate',
+  tags: ['Documents'],
+  summary: 'Generate a knowledge document',
+  request: {
+    params: DomainSchemaIdParamSchema,
+  },
+  responses: {
+    200: {
+      description: 'Document generated',
+      content: {
+        'application/json': {
+          schema: DocumentGenerateResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Domain schema not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+const getLatestDocumentRoute = createRoute({
+  method: 'get',
+  path: '/{domainSchemaId}/documents/latest',
+  tags: ['Documents'],
+  summary: 'Get latest document as markdown',
+  request: {
+    params: DomainSchemaIdParamSchema,
+  },
+  responses: {
+    200: {
+      description: 'Document markdown content',
+      content: {
+        'text/markdown': {
+          schema: z.string(),
+        },
+      },
+    },
+    404: {
+      description: 'Document not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+const getLatestDocumentMetaRoute = createRoute({
+  method: 'get',
+  path: '/{domainSchemaId}/documents/latest/meta',
+  tags: ['Documents'],
+  summary: 'Get latest document metadata',
+  request: {
+    params: DomainSchemaIdParamSchema,
+  },
+  responses: {
+    200: {
+      description: 'Document metadata',
+      content: {
+        'application/json': {
+          schema: DocumentMetaResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Document not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+const getChapterRoute = createRoute({
+  method: 'get',
+  path: '/{domainSchemaId}/documents/latest/{filename}',
+  tags: ['Documents'],
+  summary: 'Get a specific chapter as markdown',
+  request: {
+    params: z.object({
+      domainSchemaId: z.string().min(1),
+      filename: z.string().min(1),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Chapter markdown content',
+      content: {
+        'text/markdown': {
+          schema: z.string(),
+        },
+      },
+    },
+    404: {
+      description: 'Document or chapter not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+export function createDocumentRoutes(): OpenAPIHono<AppEnv> {
+  const docs = createRouter();
+
+  docs.openapi(generateDocumentRoute, async (c) => {
+    const { domainSchemaId } = c.req.valid('param');
     const { documentGenerator, schemaRepository } = c.get('tenantRepos');
 
     const domainSchema =
@@ -24,20 +149,26 @@ export function createDocumentRoutes(): Hono<AppEnv> {
 
     const result = await documentGenerator.generate({ domainSchemaId });
 
-    return c.json({
-      status: 'completed',
-      meta: result.meta,
-      chapters: result.chapters.map((ch) => ({
-        filename: ch.filename,
-        title: ch.title,
-        entryCount: ch.entryCount,
-        gapCount: ch.gapCount,
-      })),
-    });
+    return c.json(
+      {
+        status: 'completed' as const,
+        meta: {
+          ...result.meta,
+          sourceEntryIds: [...result.meta.sourceEntryIds],
+        },
+        chapters: result.chapters.map((ch) => ({
+          filename: ch.filename,
+          title: ch.title,
+          entryCount: ch.entryCount,
+          gapCount: ch.gapCount,
+        })),
+      },
+      200,
+    );
   });
 
-  docs.get('/:domainSchemaId/documents/latest', async (c) => {
-    const { domainSchemaId } = c.req.param();
+  docs.openapi(getLatestDocumentRoute, async (c) => {
+    const { domainSchemaId } = c.req.valid('param');
     const { documentGenerator } = c.get('tenantRepos');
 
     const result = await documentGenerator.getLatest(domainSchemaId);
@@ -56,8 +187,8 @@ export function createDocumentRoutes(): Hono<AppEnv> {
     return c.body(result.indexContent);
   });
 
-  docs.get('/:domainSchemaId/documents/latest/meta', async (c) => {
-    const { domainSchemaId } = c.req.param();
+  docs.openapi(getLatestDocumentMetaRoute, async (c) => {
+    const { domainSchemaId } = c.req.valid('param');
     const { documentGenerator } = c.get('tenantRepos');
 
     const result = await documentGenerator.getLatest(domainSchemaId);
@@ -72,11 +203,17 @@ export function createDocumentRoutes(): Hono<AppEnv> {
       );
     }
 
-    return c.json(result.meta);
+    return c.json(
+      {
+        ...result.meta,
+        sourceEntryIds: [...result.meta.sourceEntryIds],
+      },
+      200,
+    );
   });
 
-  docs.get('/:domainSchemaId/documents/latest/:filename', async (c) => {
-    const { domainSchemaId, filename } = c.req.param();
+  docs.openapi(getChapterRoute, async (c) => {
+    const { domainSchemaId, filename } = c.req.valid('param');
     const { documentGenerator } = c.get('tenantRepos');
 
     const result = await documentGenerator.getLatest(domainSchemaId);

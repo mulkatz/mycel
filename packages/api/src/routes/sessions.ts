@@ -1,16 +1,145 @@
-import { Hono } from 'hono';
+import { createRoute, z } from '@hono/zod-openapi';
+import type { OpenAPIHono } from '@hono/zod-openapi';
 import type { SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositories.js';
 import { createSessionManager } from '@mycel/core/src/session/session-manager.js';
 import { SessionError } from '@mycel/shared/src/utils/errors.js';
-import type { AppEnv } from '../types.js';
+import { createRouter, type AppEnv } from '../types.js';
 import { CreateSessionSchema, CreateTurnSchema } from '../schemas/requests.js';
+import {
+  ErrorResponseSchema,
+  CreateSessionResponseSchema,
+  TurnResponseSchema,
+  SessionDetailResponseSchema,
+  EndSessionResponseSchema,
+} from '../schemas/responses.js';
 
-export function createSessionRoutes(shared: SharedDeps): Hono<AppEnv> {
-  const sessions = new Hono<AppEnv>();
+const SessionIdParamSchema = z.object({
+  sessionId: z.string().min(1),
+});
 
-  sessions.post('/', async (c) => {
-    const body = CreateSessionSchema.parse(await c.req.json());
-    const { sessionRepository, knowledgeRepository, schemaRepository, fieldStatsRepository, enrichmentOrchestrator } =
+const createSessionRoute = createRoute({
+  method: 'post',
+  path: '/',
+  tags: ['Sessions'],
+  summary: 'Create a new session',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: CreateSessionSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: 'Session created',
+      content: {
+        'application/json': {
+          schema: CreateSessionResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Validation error',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Schema not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+const createTurnRoute = createRoute({
+  method: 'post',
+  path: '/{sessionId}/turns',
+  tags: ['Sessions'],
+  summary: 'Submit a turn in a session',
+  request: {
+    params: SessionIdParamSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: CreateTurnSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Turn response',
+      content: {
+        'application/json': {
+          schema: TurnResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Validation error',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+const getSessionRoute = createRoute({
+  method: 'get',
+  path: '/{sessionId}',
+  tags: ['Sessions'],
+  summary: 'Get session details',
+  request: {
+    params: SessionIdParamSchema,
+  },
+  responses: {
+    200: {
+      description: 'Session details',
+      content: {
+        'application/json': {
+          schema: SessionDetailResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+const endSessionRoute = createRoute({
+  method: 'post',
+  path: '/{sessionId}/end',
+  tags: ['Sessions'],
+  summary: 'End a session',
+  request: {
+    params: SessionIdParamSchema,
+  },
+  responses: {
+    200: {
+      description: 'Session ended',
+      content: {
+        'application/json': {
+          schema: EndSessionResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+export function createSessionRoutes(shared: SharedDeps): OpenAPIHono<AppEnv> {
+  const sessions = createRouter();
+
+  sessions.openapi(createSessionRoute, async (c) => {
+    const body = c.req.valid('json');
+    const { sessionRepository, knowledgeRepository, schemaRepository, fieldStatsRepository } =
       c.get('tenantRepos');
 
     const domainSchema =
@@ -58,16 +187,16 @@ export function createSessionRoutes(shared: SharedDeps): Hono<AppEnv> {
     return c.json(
       {
         sessionId: result.sessionId,
-        status: 'active',
+        status: 'active' as const,
         greeting: result.greeting,
       },
       201,
     );
   });
 
-  sessions.post('/:sessionId/turns', async (c) => {
-    const { sessionId } = c.req.param();
-    const body = CreateTurnSchema.parse(await c.req.json());
+  sessions.openapi(createTurnRoute, async (c) => {
+    const { sessionId } = c.req.valid('param');
+    const body = c.req.valid('json');
     const { sessionRepository, knowledgeRepository, schemaRepository, fieldStatsRepository, enrichmentOrchestrator } =
       c.get('tenantRepos');
 
@@ -113,17 +242,20 @@ export function createSessionRoutes(shared: SharedDeps): Hono<AppEnv> {
       isFollowUpResponse: isFollowUp,
     });
 
-    return c.json({
-      sessionId,
-      turnIndex: response.turnNumber,
-      response: response.personaResponse,
-      knowledgeExtracted: !!response.entry,
-      status: 'active',
-    });
+    return c.json(
+      {
+        sessionId,
+        turnIndex: response.turnNumber,
+        response: response.personaResponse,
+        knowledgeExtracted: !!response.entry,
+        status: 'active',
+      },
+      200,
+    );
   });
 
-  sessions.get('/:sessionId', async (c) => {
-    const { sessionId } = c.req.param();
+  sessions.openapi(getSessionRoute, async (c) => {
+    const { sessionId } = c.req.valid('param');
     const { sessionRepository, knowledgeRepository } = c.get('tenantRepos');
 
     const session = await sessionRepository.getSessionWithTurns(sessionId);
@@ -133,18 +265,21 @@ export function createSessionRoutes(shared: SharedDeps): Hono<AppEnv> {
 
     const entries = await knowledgeRepository.getBySession(sessionId);
 
-    return c.json({
-      sessionId: session.id,
-      status: session.status,
-      turnCount: session.turnCount,
-      createdAt: session.createdAt.toISOString(),
-      updatedAt: session.updatedAt.toISOString(),
-      knowledgeEntryCount: entries.length,
-    });
+    return c.json(
+      {
+        sessionId: session.id,
+        status: session.status,
+        turnCount: session.turnCount,
+        createdAt: session.createdAt.toISOString(),
+        updatedAt: session.updatedAt.toISOString(),
+        knowledgeEntryCount: entries.length,
+      },
+      200,
+    );
   });
 
-  sessions.post('/:sessionId/end', async (c) => {
-    const { sessionId } = c.req.param();
+  sessions.openapi(endSessionRoute, async (c) => {
+    const { sessionId } = c.req.valid('param');
     const { sessionRepository, knowledgeRepository, schemaRepository, fieldStatsRepository } =
       c.get('tenantRepos');
 
@@ -179,13 +314,16 @@ export function createSessionRoutes(shared: SharedDeps): Hono<AppEnv> {
     const ended = await sessionManager.endSession(sessionId);
     const entries = await knowledgeRepository.getBySession(sessionId);
 
-    return c.json({
-      sessionId: ended.id,
-      status: ended.status,
-      turnCount: ended.turnCount,
-      knowledgeEntryCount: entries.length,
-      summary: `Session ended. ${String(entries.length)} knowledge ${entries.length === 1 ? 'entry' : 'entries'} captured.`,
-    });
+    return c.json(
+      {
+        sessionId: ended.id,
+        status: ended.status,
+        turnCount: ended.turnCount,
+        knowledgeEntryCount: entries.length,
+        summary: `Session ended. ${String(entries.length)} knowledge ${entries.length === 1 ? 'entry' : 'entries'} captured.`,
+      },
+      200,
+    );
   });
 
   return sessions;

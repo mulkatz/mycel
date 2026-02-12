@@ -1,7 +1,13 @@
-import { Hono } from 'hono';
-import { z } from 'zod';
+import { createRoute, z } from '@hono/zod-openapi';
+import type { OpenAPIHono } from '@hono/zod-openapi';
 import { DomainBehaviorConfigSchema } from '@mycel/schemas/src/domain-behavior.schema.js';
-import type { AppEnv } from '../types.js';
+import { createRouter, type AppEnv } from '../types.js';
+import {
+  ErrorResponseSchema,
+  SchemaGenerateResponseSchema,
+  SchemaReviewResponseSchema,
+  SchemaProposalResponseSchema,
+} from '../schemas/responses.js';
 
 const GenerateSchemaRequestSchema = z.object({
   description: z.string().min(10),
@@ -54,12 +60,112 @@ const ReviewRequestSchema = z.object({
   feedback: z.string().optional(),
 });
 
-export function createSchemaGeneratorRoutes(): Hono<AppEnv> {
-  const routes = new Hono<AppEnv>();
+const generateSchemaRoute = createRoute({
+  method: 'post',
+  path: '/generate',
+  tags: ['Schema Generator'],
+  summary: 'Generate a domain schema proposal',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: GenerateSchemaRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: 'Schema proposal generated',
+      content: {
+        'application/json': {
+          schema: SchemaGenerateResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Validation error',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
 
-  routes.post('/generate', async (c) => {
-    const body: unknown = await c.req.json();
-    const input = GenerateSchemaRequestSchema.parse(body);
+const reviewProposalRoute = createRoute({
+  method: 'post',
+  path: '/proposals/{proposalId}/review',
+  tags: ['Schema Generator'],
+  summary: 'Review a schema proposal',
+  request: {
+    params: z.object({
+      proposalId: z.string().min(1),
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: ReviewRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Review result',
+      content: {
+        'application/json': {
+          schema: SchemaReviewResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Validation error',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+const getProposalRoute = createRoute({
+  method: 'get',
+  path: '/proposals/{proposalId}',
+  tags: ['Schema Generator'],
+  summary: 'Get a schema proposal',
+  request: {
+    params: z.object({
+      proposalId: z.string().min(1),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Schema proposal details',
+      content: {
+        'application/json': {
+          schema: SchemaProposalResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Proposal not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+export function createSchemaGeneratorRoutes(): OpenAPIHono<AppEnv> {
+  const routes = createRouter();
+
+  routes.openapi(generateSchemaRoute, async (c) => {
+    const input = c.req.valid('json');
     const { schemaGenerator } = c.get('tenantRepos');
 
     const result = await schemaGenerator.generate({
@@ -73,19 +179,21 @@ export function createSchemaGeneratorRoutes(): Hono<AppEnv> {
       {
         proposalId: result.proposalId,
         status: result.status,
-        domain: result.domain,
+        domain: {
+          ...result.domain,
+          categories: result.domain.categories.map((cat) => ({ ...cat })),
+        },
         behavior: result.behavior,
         reasoning: result.reasoning,
-        sources: result.sources,
+        sources: [...result.sources],
       },
       201,
     );
   });
 
-  routes.post('/proposals/:proposalId/review', async (c) => {
-    const { proposalId } = c.req.param();
-    const body: unknown = await c.req.json();
-    const input = ReviewRequestSchema.parse(body);
+  routes.openapi(reviewProposalRoute, async (c) => {
+    const { proposalId } = c.req.valid('param');
+    const input = c.req.valid('json');
     const { schemaGenerator } = c.get('tenantRepos');
 
     const result = await schemaGenerator.reviewProposal(proposalId, {
@@ -94,11 +202,18 @@ export function createSchemaGeneratorRoutes(): Hono<AppEnv> {
       feedback: input.feedback,
     });
 
-    return c.json(result);
+    return c.json(
+      {
+        status: result.status,
+        proposalId: result.proposalId,
+        domainSchemaId: result.domainSchemaId,
+      },
+      200,
+    );
   });
 
-  routes.get('/proposals/:proposalId', async (c) => {
-    const { proposalId } = c.req.param();
+  routes.openapi(getProposalRoute, async (c) => {
+    const { proposalId } = c.req.valid('param');
     const { schemaGenerator } = c.get('tenantRepos');
 
     const proposal = await schemaGenerator.getProposal(proposalId);
@@ -113,7 +228,16 @@ export function createSchemaGeneratorRoutes(): Hono<AppEnv> {
       );
     }
 
-    return c.json(proposal);
+    return c.json(
+      {
+        id: proposal.id,
+        status: proposal.status,
+        reasoning: proposal.reasoning,
+        sources: [...proposal.sources],
+        createdAt: proposal.createdAt.toISOString(),
+      },
+      200,
+    );
   });
 
   return routes;
