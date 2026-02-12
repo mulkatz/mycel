@@ -4,8 +4,10 @@ import { createFirestoreSessionRepository } from '@mycel/core/src/infrastructure
 import { createFirestoreKnowledgeRepository } from '@mycel/core/src/infrastructure/firestore-knowledge.repository.js';
 import { createFirestoreSchemaRepository } from '@mycel/core/src/infrastructure/firestore-schema.repository.js';
 import { createLlmClient } from '@mycel/core/src/llm/llm-client.js';
+import { createTextLlmClient } from '@mycel/core/src/llm/text-llm-client.js';
 import { createVertexEmbeddingClient } from '@mycel/core/src/embedding/vertex-embedding-client.js';
 import { createMockEmbeddingClient } from '@mycel/core/src/embedding/mock-embedding-client.js';
+import { createDocumentGenerator } from '@mycel/core/src/services/document-generator/document-generator.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { createApp } from './app.js';
 
@@ -16,17 +18,29 @@ async function main(): Promise<void> {
 
   const db = createFirestoreClient();
   const llmClient = await createLlmClient();
+  const textLlmClient = await createTextLlmClient();
   const embeddingClient =
     process.env['MYCEL_MOCK_LLM'] === 'true'
       ? createMockEmbeddingClient()
       : createVertexEmbeddingClient();
 
+  const knowledgeRepository = createFirestoreKnowledgeRepository(db);
+  const schemaRepository = createFirestoreSchemaRepository(db);
+
+  const documentGenerator = createDocumentGenerator({
+    knowledgeRepository,
+    schemaRepository,
+    textLlmClient,
+    firestoreClient: db,
+  });
+
   const app = createApp({
     sessionRepository: createFirestoreSessionRepository(db),
-    knowledgeRepository: createFirestoreKnowledgeRepository(db),
-    schemaRepository: createFirestoreSchemaRepository(db),
+    knowledgeRepository,
+    schemaRepository,
     llmClient,
     embeddingClient,
+    documentGenerator,
   });
 
   log.info({ port }, 'Starting Mycel API server');

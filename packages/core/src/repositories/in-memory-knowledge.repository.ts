@@ -114,6 +114,13 @@ export function createInMemoryKnowledgeRepository(): KnowledgeRepository {
       return Promise.resolve(scored);
     },
 
+    getByDomain(domainSchemaId: string): Promise<readonly KnowledgeEntry[]> {
+      const result = [...entries.values()]
+        .filter((e) => e.domainSchemaId === domainSchemaId)
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      return Promise.resolve(result);
+    },
+
     update(id: string, updates: UpdateKnowledgeEntryInput): Promise<void> {
       const entry = entries.get(id);
       if (!entry) {

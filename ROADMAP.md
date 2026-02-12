@@ -22,10 +22,12 @@ Before starting any task from the backlog:
 - [x] API layer (Cloud Run HTTP entrypoint, request/response contracts, proactive greeting)
 - [x] RAG foundation (embedding generation, Firestore vector search, Context Dispatcher)
 - [x] Cloud Run deployment (Dockerfile, Artifact Registry push, Terraform Cloud Run module, deploy script, public dev access)
+- [x] Known issues fix (intent-aware pipeline routing, completeness score overhaul, proactive questions, graceful "don't know" handling, Zod validation cleanup)
 
 ## In Progress
 
 ## Backlog (ordered by priority)
+- [ ] Document Generator (async Markdown documentation from Knowledge Entries — Heimatbuch-style prose, chapter structure, gap hints)
 - [ ] Dynamic schema evolution (schemas emerge from conversation, no predefined categories required)
 - [ ] Web Search agent (autonomous research during conversation, validate user claims, enrich follow-up questions)
 - [ ] Audio ingestion (Speech-to-Text via Vertex AI → pipeline)

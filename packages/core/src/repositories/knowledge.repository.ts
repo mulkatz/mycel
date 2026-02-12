@@ -49,5 +49,6 @@ export interface KnowledgeRepository {
     limit?: number;
     excludeSessionId?: string;
   }): Promise<readonly KnowledgeSearchResult[]>;
+  getByDomain(domainSchemaId: string): Promise<readonly KnowledgeEntry[]>;
   update(id: string, updates: UpdateKnowledgeEntryInput): Promise<void>;
 }

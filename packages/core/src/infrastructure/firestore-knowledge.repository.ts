@@ -243,6 +243,15 @@ export function createFirestoreKnowledgeRepository(db: Firestore): KnowledgeRepo
       }
     },
 
+    async getByDomain(domainSchemaId: string): Promise<readonly KnowledgeEntry[]> {
+      const snapshot = await collectionRef
+        .where('domainSchemaId', '==', domainSchemaId)
+        .orderBy('createdAt', 'asc')
+        .get();
+
+      return snapshot.docs.map((doc) => entryFromDoc(doc.id, doc.data() as KnowledgeEntryDocument));
+    },
+
     async update(id: string, updates: UpdateKnowledgeEntryInput): Promise<void> {
       const updateData: Record<string, unknown> = {
         updatedAt: Timestamp.now(),

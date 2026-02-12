@@ -5,11 +5,13 @@ import type { KnowledgeRepository } from '@mycel/core/src/repositories/knowledge
 import type { SchemaRepository } from '@mycel/core/src/repositories/schema.repository.js';
 import type { LlmClient } from '@mycel/core/src/llm/llm-client.js';
 import type { EmbeddingClient } from '@mycel/core/src/embedding/embedding-client.js';
+import type { DocumentGenerator } from '@mycel/core/src/services/document-generator/types.js';
 import type { AppEnv } from './types.js';
 import { requestId } from './middleware/request-id.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { health } from './routes/health.js';
 import { createSessionRoutes } from './routes/sessions.js';
+import { createDocumentRoutes } from './routes/documents.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 
 const log = createChildLogger('api:server');
@@ -20,6 +22,7 @@ export interface AppDependencies {
   readonly schemaRepository: SchemaRepository;
   readonly llmClient: LlmClient;
   readonly embeddingClient?: EmbeddingClient;
+  readonly documentGenerator?: DocumentGenerator;
 }
 
 export function createApp(deps: AppDependencies): Hono<AppEnv> {
@@ -49,6 +52,13 @@ export function createApp(deps: AppDependencies): Hono<AppEnv> {
 
   app.route('/health', health);
   app.route('/sessions', createSessionRoutes(deps));
+
+  if (deps.documentGenerator) {
+    app.route('/domains', createDocumentRoutes({
+      documentGenerator: deps.documentGenerator,
+      schemaRepository: deps.schemaRepository,
+    }));
+  }
 
   return app;
 }
