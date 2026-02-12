@@ -14,12 +14,13 @@ export interface InvokeAndValidateOptions<T extends z.ZodTypeAny> {
   readonly schema: T;
   readonly agentName: string;
   readonly maxRetries?: number;
+  readonly preprocess?: (raw: unknown) => void;
 }
 
 export async function invokeAndValidate<T extends z.ZodTypeAny>(
   options: InvokeAndValidateOptions<T>,
 ): Promise<z.infer<T>> {
-  const { llmClient, request, schema, agentName, maxRetries = DEFAULT_MAX_RETRIES } = options;
+  const { llmClient, request, schema, agentName, maxRetries = DEFAULT_MAX_RETRIES, preprocess } = options;
 
   let lastErrors: string[] = [];
 
@@ -53,6 +54,10 @@ export async function invokeAndValidate<T extends z.ZodTypeAny>(
         'JSON parse failed, retrying with correction',
       );
       continue;
+    }
+
+    if (preprocess) {
+      preprocess(parsed);
     }
 
     const result = schema.safeParse(parsed);

@@ -23,6 +23,19 @@ const SynthesizedSchemaSchema = DomainSchema.extend({
   ).min(1),
 });
 
+function ensureIngestion(
+  raw: Record<string, unknown>,
+  analysis: DomainAnalysis,
+): void {
+  if (!raw['ingestion'] || typeof raw['ingestion'] !== 'object') {
+    raw['ingestion'] = {
+      allowedModalities: ['text'],
+      primaryLanguage: analysis.language,
+      supportedLanguages: [analysis.language],
+    };
+  }
+}
+
 function buildSystemPrompt(partialSchema?: Partial<DomainConfig>): string {
   const base = `You are an expert knowledge engineer. Based on the domain analysis and web research results provided, create a comprehensive domain schema for a knowledge management system.
 
@@ -31,7 +44,10 @@ The schema must include:
 2. Version "1.0.0"
 3. A human-readable description
 4. 3-8 categories that cover the main areas of knowledge for this domain
-5. Ingestion config with language settings
+5. An "ingestion" object with:
+   - "allowedModalities": array of "text", "audio", "image" (always include at least "text")
+   - "primaryLanguage": ISO 639-1 code (e.g., "de", "en")
+   - "supportedLanguages": array of ISO 639-1 codes (include at least the primary language)
 6. Optional completeness config
 
 For each category:
@@ -109,6 +125,11 @@ export async function synthesizeSchema(
     },
     schema: SynthesizedSchemaSchema,
     agentName: 'SchemaSynthesizer',
+    preprocess: (raw) => {
+      if (raw && typeof raw === 'object') {
+        ensureIngestion(raw as Record<string, unknown>, analysis);
+      }
+    },
   });
 
   log.info(
