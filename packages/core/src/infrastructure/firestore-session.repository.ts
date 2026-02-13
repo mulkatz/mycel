@@ -11,6 +11,7 @@ import type { KnowledgeEntry } from '@mycel/shared/src/types/knowledge.types.js'
 import type {
   CreateSessionInput,
   CreateTurnInput,
+  ListSessionsInput,
   SessionRepository,
   UpdateSessionInput,
 } from '../repositories/session.repository.js';
@@ -84,6 +85,17 @@ export function createFirestoreSessionRepository(base: FirestoreBase): SessionRe
       await docRef.set(docData);
 
       return sessionFromDoc(docRef.id, docData, []);
+    },
+
+    async list(input?: ListSessionsInput): Promise<readonly Session[]> {
+      const limit = input?.limit ?? 50;
+      let query: FirebaseFirestore.Query = sessionsRef;
+      if (input?.status) {
+        query = query.where('status', '==', input.status);
+      }
+      query = query.orderBy('updatedAt', 'desc').limit(limit);
+      const snapshot = await query.get();
+      return snapshot.docs.map((doc) => sessionFromDoc(doc.id, doc.data() as SessionDocument, []));
     },
 
     async getById(id: string): Promise<Session | null> {

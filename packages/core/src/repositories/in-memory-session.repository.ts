@@ -4,6 +4,7 @@ import { PersistenceError } from '@mycel/shared/src/utils/errors.js';
 import type {
   CreateSessionInput,
   CreateTurnInput,
+  ListSessionsInput,
   SessionRepository,
   UpdateSessionInput,
 } from './session.repository.js';
@@ -33,6 +34,16 @@ export function createInMemorySessionRepository(): SessionRepository {
 
     getById(id: string): Promise<Session | null> {
       return Promise.resolve(sessions.get(id) ?? null);
+    },
+
+    list(input?: ListSessionsInput): Promise<readonly Session[]> {
+      let results = [...sessions.values()];
+      if (input?.status) {
+        results = results.filter((s) => s.status === input.status);
+      }
+      results.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+      const limit = input?.limit ?? 50;
+      return Promise.resolve(results.slice(0, limit));
     },
 
     update(id: string, updates: UpdateSessionInput): Promise<void> {

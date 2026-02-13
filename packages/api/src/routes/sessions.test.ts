@@ -346,6 +346,120 @@ describe('API Routes', () => {
     });
   });
 
+  describe('GET /sessions', () => {
+    it('should return empty list when no sessions exist', async () => {
+      const res = await app.request('/sessions');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { sessions: unknown[] };
+      expect(body.sessions).toEqual([]);
+    });
+
+    it('should return created sessions', async () => {
+      await app.request(
+        '/sessions',
+        jsonPost('/sessions', {
+          domainSchemaId: 'test-domain',
+          personaSchemaId: 'test-persona',
+        }),
+      );
+
+      const res = await app.request('/sessions');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { sessions: Record<string, unknown>[] };
+      expect(body.sessions).toHaveLength(1);
+      expect(body.sessions[0]).toHaveProperty('sessionId');
+      expect(body.sessions[0]).toHaveProperty('status', 'active');
+      expect(body.sessions[0]).toHaveProperty('domainSchemaId', 'test-domain');
+      expect(body.sessions[0]).toHaveProperty('personaSchemaId', 'test-persona');
+      expect(body.sessions[0]).toHaveProperty('turnCount', 0);
+      expect(body.sessions[0]).toHaveProperty('createdAt');
+      expect(body.sessions[0]).toHaveProperty('updatedAt');
+    });
+
+    it('should filter by status', async () => {
+      const createRes = await app.request(
+        '/sessions',
+        jsonPost('/sessions', {
+          domainSchemaId: 'test-domain',
+          personaSchemaId: 'test-persona',
+        }),
+      );
+      const { sessionId } = (await createRes.json()) as { sessionId: string };
+
+      // Create a second session
+      await app.request(
+        '/sessions',
+        jsonPost('/sessions', {
+          domainSchemaId: 'test-domain',
+          personaSchemaId: 'test-persona',
+        }),
+      );
+
+      // End the first session
+      await app.request(`/sessions/${sessionId}/end`, { method: 'POST' });
+
+      const activeRes = await app.request('/sessions?status=active');
+      const activeBody = (await activeRes.json()) as { sessions: Record<string, unknown>[] };
+      expect(activeBody.sessions).toHaveLength(1);
+      expect(activeBody.sessions[0]).toHaveProperty('status', 'active');
+    });
+  });
+
+  describe('GET /sessions/:sessionId/turns', () => {
+    it('should return turns for a session', async () => {
+      const createRes = await app.request(
+        '/sessions',
+        jsonPost('/sessions', {
+          domainSchemaId: 'test-domain',
+          personaSchemaId: 'test-persona',
+        }),
+      );
+      const { sessionId } = (await createRes.json()) as { sessionId: string };
+
+      await app.request(
+        `/sessions/${sessionId}/turns`,
+        jsonPost(`/sessions/${sessionId}/turns`, {
+          userInput: 'The old church was built in 1732.',
+        }),
+      );
+
+      const res = await app.request(`/sessions/${sessionId}/turns`);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { sessionId: string; turns: Record<string, unknown>[] };
+      expect(body.sessionId).toBe(sessionId);
+      expect(body.turns).toHaveLength(1);
+      expect(body.turns[0]).toHaveProperty('turnNumber', 1);
+      expect(body.turns[0]).toHaveProperty('userInput');
+      expect(body.turns[0]).toHaveProperty('response');
+      expect(body.turns[0]).toHaveProperty('followUpQuestions');
+      expect(body.turns[0]).toHaveProperty('knowledgeExtracted');
+      expect(body.turns[0]).toHaveProperty('timestamp');
+    });
+
+    it('should return 404 for nonexistent session', async () => {
+      const res = await app.request('/sessions/nonexistent/turns');
+      expect(res.status).toBe(404);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toHaveProperty('code', 'SESSION_NOT_FOUND');
+    });
+
+    it('should return empty turns for session with no turns', async () => {
+      const createRes = await app.request(
+        '/sessions',
+        jsonPost('/sessions', {
+          domainSchemaId: 'test-domain',
+          personaSchemaId: 'test-persona',
+        }),
+      );
+      const { sessionId } = (await createRes.json()) as { sessionId: string };
+
+      const res = await app.request(`/sessions/${sessionId}/turns`);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { sessionId: string; turns: unknown[] };
+      expect(body.turns).toEqual([]);
+    });
+  });
+
   describe('POST /sessions/:sessionId/end', () => {
     it('should end session and return summary', async () => {
       const createRes = await app.request(

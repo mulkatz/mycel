@@ -21,3 +21,10 @@ export const CreateTurnSchema = z
   .openapi('CreateTurnRequest');
 
 export type CreateTurnRequest = z.infer<typeof CreateTurnSchema>;
+
+export const ListSessionsQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(100).optional(),
+    status: z.enum(['active', 'complete', 'abandoned']).optional(),
+  })
+  .openapi('ListSessionsQuery');

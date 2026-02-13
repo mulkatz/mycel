@@ -20,6 +20,11 @@ export interface UpdateSessionInput {
   readonly updatedAt?: Date;
 }
 
+export interface ListSessionsInput {
+  readonly limit?: number;
+  readonly status?: SessionStatus;
+}
+
 export interface CreateTurnInput {
   readonly turnNumber: number;
   readonly input: TurnInput;
@@ -29,6 +34,7 @@ export interface CreateTurnInput {
 export interface SessionRepository {
   create(input: CreateSessionInput): Promise<Session>;
   getById(id: string): Promise<Session | null>;
+  list(input?: ListSessionsInput): Promise<readonly Session[]>;
   update(id: string, updates: UpdateSessionInput): Promise<void>;
   addTurn(sessionId: string, turn: CreateTurnInput): Promise<Turn>;
   getTurns(sessionId: string): Promise<readonly Turn[]>;

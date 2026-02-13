@@ -136,4 +136,50 @@ describe('createInMemorySessionRepository', () => {
       'Session not found',
     );
   });
+
+  describe('list', () => {
+    it('should return empty array when no sessions exist', async () => {
+      const repo = createInMemorySessionRepository();
+      const results = await repo.list();
+      expect(results).toEqual([]);
+    });
+
+    it('should return sessions sorted by updatedAt desc', async () => {
+      const repo = createInMemorySessionRepository();
+      const s1 = await repo.create(testSessionInput);
+      const s2 = await repo.create(testSessionInput);
+      // Update s1 so it has a newer updatedAt
+      await repo.update(s1.id, { status: 'active' });
+
+      const results = await repo.list();
+      expect(results).toHaveLength(2);
+      expect(results[0].id).toBe(s1.id);
+      expect(results[1].id).toBe(s2.id);
+    });
+
+    it('should filter by status', async () => {
+      const repo = createInMemorySessionRepository();
+      await repo.create(testSessionInput);
+      const s2 = await repo.create(testSessionInput);
+      await repo.update(s2.id, { status: 'complete' });
+
+      const active = await repo.list({ status: 'active' });
+      expect(active).toHaveLength(1);
+      expect(active[0].status).toBe('active');
+
+      const complete = await repo.list({ status: 'complete' });
+      expect(complete).toHaveLength(1);
+      expect(complete[0].status).toBe('complete');
+    });
+
+    it('should respect limit', async () => {
+      const repo = createInMemorySessionRepository();
+      await repo.create(testSessionInput);
+      await repo.create(testSessionInput);
+      await repo.create(testSessionInput);
+
+      const results = await repo.list({ limit: 2 });
+      expect(results).toHaveLength(2);
+    });
+  });
 });

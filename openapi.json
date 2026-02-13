@@ -33,26 +33,105 @@
           "version"
         ]
       },
-      "CreateSessionResponse": {
+      "SessionSummary": {
         "type": "object",
         "properties": {
           "sessionId": {
             "type": "string"
           },
           "status": {
-            "type": "string",
-            "enum": [
-              "active"
-            ]
+            "type": "string"
           },
-          "greeting": {
+          "domainSchemaId": {
+            "type": "string"
+          },
+          "personaSchemaId": {
+            "type": "string"
+          },
+          "turnCount": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
             "type": "string"
           }
         },
         "required": [
           "sessionId",
           "status",
-          "greeting"
+          "domainSchemaId",
+          "personaSchemaId",
+          "turnCount",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "SessionListResponse": {
+        "type": "object",
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionSummary"
+            }
+          }
+        },
+        "required": [
+          "sessions"
+        ]
+      },
+      "TurnDetail": {
+        "type": "object",
+        "properties": {
+          "turnNumber": {
+            "type": "number"
+          },
+          "userInput": {
+            "type": "string"
+          },
+          "response": {
+            "type": "string"
+          },
+          "followUpQuestions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "knowledgeExtracted": {
+            "type": "boolean"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "turnNumber",
+          "userInput",
+          "response",
+          "followUpQuestions",
+          "knowledgeExtracted",
+          "timestamp"
+        ]
+      },
+      "SessionTurnsResponse": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "turns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TurnDetail"
+            }
+          }
+        },
+        "required": [
+          "sessionId",
+          "turns"
         ]
       },
       "ErrorResponse": {
@@ -78,6 +157,28 @@
           "error",
           "code",
           "requestId"
+        ]
+      },
+      "CreateSessionResponse": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active"
+            ]
+          },
+          "greeting": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "status",
+          "greeting"
         ]
       },
       "CreateSessionRequest": {
@@ -1078,6 +1179,49 @@
       }
     },
     "/sessions": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "List sessions",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "complete",
+                "abandoned"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Sessions"
@@ -1127,6 +1271,45 @@
       }
     },
     "/sessions/{sessionId}/turns": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Get session turn history",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "sessionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Turn history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionTurnsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Sessions"

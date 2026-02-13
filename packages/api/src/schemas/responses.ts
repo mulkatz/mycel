@@ -57,6 +57,42 @@ export const EndSessionResponseSchema = z
   })
   .openapi('EndSessionResponse');
 
+export const SessionSummarySchema = z
+  .object({
+    sessionId: z.string(),
+    status: z.string(),
+    domainSchemaId: z.string(),
+    personaSchemaId: z.string(),
+    turnCount: z.number(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .openapi('SessionSummary');
+
+export const SessionListResponseSchema = z
+  .object({
+    sessions: z.array(SessionSummarySchema),
+  })
+  .openapi('SessionListResponse');
+
+export const TurnDetailSchema = z
+  .object({
+    turnNumber: z.number(),
+    userInput: z.string(),
+    response: z.string(),
+    followUpQuestions: z.array(z.string()),
+    knowledgeExtracted: z.boolean(),
+    timestamp: z.string(),
+  })
+  .openapi('TurnDetail');
+
+export const SessionTurnsResponseSchema = z
+  .object({
+    sessionId: z.string(),
+    turns: z.array(TurnDetailSchema),
+  })
+  .openapi('SessionTurnsResponse');
+
 // Entries
 export const EnrichmentClaimSchema = z.object({
   claim: z.string(),

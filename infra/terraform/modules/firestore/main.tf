@@ -116,6 +116,22 @@ resource "google_firestore_index" "knowledge_entries_domain_created" {
   }
 }
 
+resource "google_firestore_index" "sessions_status_updated" {
+  project    = var.project_id
+  database   = google_firestore_database.main.name
+  collection = "sessions"
+
+  fields {
+    field_path = "status"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "updatedAt"
+    order      = "DESCENDING"
+  }
+}
+
 resource "google_firestore_index" "knowledge_entries_vector" {
   project    = var.project_id
   database   = google_firestore_database.main.name
