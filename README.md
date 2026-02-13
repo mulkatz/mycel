@@ -161,6 +161,14 @@ mycel/
 └── scripts/          # CLI tools & deployment
 ```
 
+## Frontend
+
+The web interface is in a separate repository: [mycel-web](https://github.com/Franjoo/mycel-web)
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
 ## License
 
-Proprietary — All Rights Reserved. See [LICENSE](./LICENSE).
+MIT License — see [LICENSE](LICENSE) for details.

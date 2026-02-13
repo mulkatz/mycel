@@ -28,7 +28,9 @@ if [ -f "$ENV_FILE" ]; then
   unset FIRESTORE_EMULATOR_HOST
 fi
 
-SERVICE_URL="${1:-$(gcloud run services describe mycel-api --region=europe-west3 --project=mycel-dev-1348 --format='value(status.url)' 2>/dev/null || echo "")}"
+GCP_PROJECT="${MYCEL_GCP_PROJECT_ID:-}"
+GCP_REGION="${MYCEL_GCP_REGION:-europe-west3}"
+SERVICE_URL="${1:-$(gcloud run services describe mycel-api --region="$GCP_REGION" --project="$GCP_PROJECT" --format='value(status.url)' 2>/dev/null || echo "")}"
 
 if [ -z "$SERVICE_URL" ]; then
   echo "❌ No SERVICE_URL. Pass as argument or ensure gcloud is configured."

@@ -53,16 +53,10 @@ jobs:
           terraform_version: "1.5"
 
       - name: Terraform Format Check
-        run: terraform fmt -check -recursive infrastructure/
+        run: terraform fmt -check -recursive infra/terraform/
 
       - name: Terraform Validate (dev)
-        working-directory: infrastructure/environments/dev
-        run: |
-          terraform init -backend=false
-          terraform validate
-
-      - name: Terraform Validate (prod)
-        working-directory: infrastructure/environments/prod
+        working-directory: infra/terraform/environments/dev
         run: |
           terraform init -backend=false
           terraform validate
