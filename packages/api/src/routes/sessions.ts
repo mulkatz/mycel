@@ -253,8 +253,8 @@ export function createSessionRoutes(shared: SharedDeps): OpenAPIHono<AppEnv> {
         turns: turns.map((t) => ({
           turnNumber: t.turnNumber,
           userInput: t.input.content,
-          response: t.pipelineResult.personaOutput?.result?.response ?? '',
-          followUpQuestions: [...(t.pipelineResult.personaOutput?.result?.followUpQuestions ?? [])],
+          response: t.pipelineResult.personaOutput?.result.response ?? '',
+          followUpQuestions: [...(t.pipelineResult.personaOutput?.result.followUpQuestions ?? [])],
           knowledgeExtracted: !!t.pipelineResult.structuringOutput,
           timestamp: t.timestamp.toISOString(),
         })),

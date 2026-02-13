@@ -53,6 +53,7 @@ function makeEntryInput(overrides: Partial<CreateKnowledgeEntryInput> = {}): Cre
 function createMockFirestore(): Firestore {
   const store = new Map<string, Record<string, unknown>>();
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
   const mockDoc = (path: string) => ({
     set: vi.fn((data: Record<string, unknown>) => {
       store.set(path, data);
