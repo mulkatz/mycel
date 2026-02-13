@@ -29,6 +29,7 @@ Before starting any task from the backlog:
 - [x] Real-time Web Enrichment — Phase 3 of 3 (async claim extraction + validation during conversations, 7-day search cache, conflict flagging, enrichment metadata on Knowledge Entries, Context Dispatcher integration with verification markers)
 - [x] Authentication and multi-tenancy (GCP Identity Platform anonymous auth, JWT validation via `jose`, tenant-scoped Firestore under `tenants/{tenantId}/`, migration script)
 - [x] OpenAPI spec & Scalar API docs (`@hono/zod-openapi` route-level validation, `npm run generate:openapi`, Scalar UI at `/docs`)
+- [x] Session list & turn history API (`GET /sessions` with status filter, `GET /sessions/{sessionId}/turns`, Firestore composite index)
 
 ## In Progress
 
