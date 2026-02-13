@@ -305,3 +305,121 @@ export const EvolutionStatsResponseSchema = z
     stats: z.array(FieldStatSchema),
   })
   .openapi('EvolutionStatsResponse');
+
+// Domains (Admin)
+export const DomainSummarySchema = z
+  .object({
+    domainSchemaId: z.string(),
+    name: z.string(),
+    version: z.number(),
+    isActive: z.boolean(),
+    origin: z.string(),
+    categoryCount: z.number(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .openapi('DomainSummary');
+
+export const DomainListResponseSchema = z
+  .object({
+    domains: z.array(DomainSummarySchema),
+  })
+  .openapi('DomainListResponse');
+
+export const DomainDetailResponseSchema = z
+  .object({
+    domainSchemaId: z.string(),
+    name: z.string(),
+    version: z.number(),
+    isActive: z.boolean(),
+    origin: z.string(),
+    generatedFrom: z.string().optional(),
+    config: z.record(z.unknown()),
+    behavior: z.record(z.unknown()),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .openapi('DomainDetailResponse');
+
+// Personas (Admin)
+export const PersonaSummarySchema = z
+  .object({
+    personaSchemaId: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    isActive: z.boolean(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .openapi('PersonaSummary');
+
+export const PersonaListResponseSchema = z
+  .object({
+    personas: z.array(PersonaSummarySchema),
+  })
+  .openapi('PersonaListResponse');
+
+export const PersonaDetailResponseSchema = z
+  .object({
+    personaSchemaId: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    version: z.number(),
+    isActive: z.boolean(),
+    config: z.record(z.unknown()),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .openapi('PersonaDetailResponse');
+
+export const PersonaCreateResponseSchema = z
+  .object({
+    personaSchemaId: z.string(),
+    name: z.string(),
+    isActive: z.boolean(),
+    createdAt: z.string(),
+  })
+  .openapi('PersonaCreateResponse');
+
+export const PersonaDeleteResponseSchema = z
+  .object({
+    success: z.literal(true),
+  })
+  .openapi('PersonaDeleteResponse');
+
+// Entries (Admin)
+export const EntrySummarySchema = z
+  .object({
+    entryId: z.string(),
+    sessionId: z.string().optional(),
+    category: z.string(),
+    title: z.string(),
+    confidence: z.number().optional(),
+    hasEnrichment: z.boolean(),
+    createdAt: z.string(),
+  })
+  .openapi('EntrySummary');
+
+export const EntryListResponseSchema = z
+  .object({
+    entries: z.array(EntrySummarySchema),
+    total: z.number(),
+  })
+  .openapi('EntryListResponse');
+
+export const EntryDetailResponseSchema = z
+  .object({
+    entryId: z.string(),
+    sessionId: z.string().optional(),
+    domainSchemaId: z.string().optional(),
+    category: z.string(),
+    title: z.string(),
+    content: z.string(),
+    confidence: z.number().optional(),
+    structuredData: z.record(z.unknown()),
+    tags: z.array(z.string()),
+    enrichment: z.record(z.unknown()).nullable(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .openapi('EntryDetailResponse');

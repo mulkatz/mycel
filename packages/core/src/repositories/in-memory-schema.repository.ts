@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { resolveBehaviorPreset } from '@mycel/schemas/src/domain-behavior.schema.js';
+import { PersistenceError } from '@mycel/shared/src/utils/errors.js';
 import type {
   CreateDomainSchemaInput,
   CreatePersonaSchemaInput,
+  UpdatePersonaSchemaInput,
   PersistedDomainSchema,
   PersistedPersonaSchema,
   SchemaRepository,
@@ -99,6 +101,7 @@ export function createInMemorySchemaRepository(): SchemaRepository {
       const persisted: PersistedPersonaSchema = {
         id: randomUUID(),
         name: input.name,
+        description: input.description,
         version: input.version,
         config: input.config,
         isActive: input.isActive,
@@ -107,6 +110,47 @@ export function createInMemorySchemaRepository(): SchemaRepository {
       };
       personaSchemas.set(persisted.id, persisted);
       return Promise.resolve(persisted);
+    },
+
+    listDomainSchemas(filter?: { isActive?: boolean }): Promise<readonly PersistedDomainSchema[]> {
+      let results = [...domainSchemas.values()];
+      if (filter?.isActive !== undefined) {
+        results = results.filter((s) => s.isActive === filter.isActive);
+      }
+      results.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+      return Promise.resolve(results);
+    },
+
+    listPersonaSchemas(): Promise<readonly PersistedPersonaSchema[]> {
+      const results = [...personaSchemas.values()];
+      results.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+      return Promise.resolve(results);
+    },
+
+    updatePersonaSchema(id: string, updates: UpdatePersonaSchemaInput): Promise<PersistedPersonaSchema> {
+      const existing = personaSchemas.get(id);
+      if (!existing) {
+        return Promise.reject(new PersistenceError(`Persona schema not found: ${id}`));
+      }
+      const updated: PersistedPersonaSchema = {
+        ...existing,
+        ...(updates.name !== undefined && { name: updates.name }),
+        ...(updates.description !== undefined && { description: updates.description }),
+        ...(updates.config !== undefined && { config: updates.config }),
+        ...(updates.isActive !== undefined && { isActive: updates.isActive }),
+        version: existing.version + 1,
+        updatedAt: new Date(),
+      };
+      personaSchemas.set(id, updated);
+      return Promise.resolve(updated);
+    },
+
+    deletePersonaSchema(id: string): Promise<void> {
+      if (!personaSchemas.has(id)) {
+        return Promise.reject(new PersistenceError(`Persona schema not found: ${id}`));
+      }
+      personaSchemas.delete(id);
+      return Promise.resolve();
     },
   };
 }

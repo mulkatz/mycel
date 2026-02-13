@@ -13,6 +13,8 @@ import { createDocumentRoutes } from './routes/documents.js';
 import { createSchemaGeneratorRoutes } from './routes/schema-generator.js';
 import { createEvolutionRoutes } from './routes/evolution.js';
 import { createEntryRoutes } from './routes/entries.js';
+import { createDomainAdminRoutes } from './routes/domain-admin.js';
+import { createPersonaRoutes } from './routes/personas.js';
 import { createChildLogger } from '@mycel/shared/src/logger.js';
 
 const log = createChildLogger('api:server');
@@ -103,6 +105,8 @@ export function createApp(config: AppConfig): OpenAPIHono<AppEnv> {
   app.route('/domains', createDocumentRoutes());
   app.route('/domains', createSchemaGeneratorRoutes());
   app.route('/domains', createEvolutionRoutes());
+  app.route('/domains', createDomainAdminRoutes());
+  app.route('/personas', createPersonaRoutes());
   app.route('/entries', createEntryRoutes());
 
   return app;

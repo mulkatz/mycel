@@ -20,6 +20,7 @@ export interface PersistedDomainSchema {
 export interface PersistedPersonaSchema {
   readonly id: string;
   readonly name: string;
+  readonly description?: string;
   readonly version: number;
   readonly config: PersonaConfig;
   readonly isActive: boolean;
@@ -39,9 +40,17 @@ export interface CreateDomainSchemaInput {
 
 export interface CreatePersonaSchemaInput {
   readonly name: string;
+  readonly description?: string;
   readonly version: number;
   readonly config: PersonaConfig;
   readonly isActive: boolean;
+}
+
+export interface UpdatePersonaSchemaInput {
+  readonly name?: string;
+  readonly description?: string;
+  readonly config?: PersonaConfig;
+  readonly isActive?: boolean;
 }
 
 export interface SchemaRepository {
@@ -49,8 +58,12 @@ export interface SchemaRepository {
   getDomainSchemaByName(name: string): Promise<PersistedDomainSchema | null>;
   getActiveDomainSchema(): Promise<PersistedDomainSchema | null>;
   saveDomainSchema(input: CreateDomainSchemaInput): Promise<PersistedDomainSchema>;
+  listDomainSchemas(filter?: { isActive?: boolean }): Promise<readonly PersistedDomainSchema[]>;
   getPersonaSchema(id: string): Promise<PersistedPersonaSchema | null>;
   getPersonaSchemaByName(name: string): Promise<PersistedPersonaSchema | null>;
   getActivePersonaSchema(): Promise<PersistedPersonaSchema | null>;
   savePersonaSchema(input: CreatePersonaSchemaInput): Promise<PersistedPersonaSchema>;
+  listPersonaSchemas(): Promise<readonly PersistedPersonaSchema[]>;
+  updatePersonaSchema(id: string, updates: UpdatePersonaSchemaInput): Promise<PersistedPersonaSchema>;
+  deletePersonaSchema(id: string): Promise<void>;
 }

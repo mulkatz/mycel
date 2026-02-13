@@ -1,4 +1,4 @@
-import { Timestamp } from '@google-cloud/firestore';
+import { FieldValue, Timestamp } from '@google-cloud/firestore';
 import type { FirestoreBase } from './firestore-types.js';
 import { getFirestoreClient } from './firestore-types.js';
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
@@ -8,11 +8,13 @@ import { resolveBehaviorPreset } from '@mycel/schemas/src/domain-behavior.schema
 import type {
   CreateDomainSchemaInput,
   CreatePersonaSchemaInput,
+  UpdatePersonaSchemaInput,
   DomainSchemaOrigin,
   PersistedDomainSchema,
   PersistedPersonaSchema,
   SchemaRepository,
 } from '../repositories/schema.repository.js';
+import { PersistenceError } from '@mycel/shared/src/utils/errors.js';
 
 const DOMAIN_SCHEMAS_COLLECTION = 'domainSchemas';
 const PERSONA_SCHEMAS_COLLECTION = 'personaSchemas';
@@ -31,6 +33,7 @@ interface DomainSchemaDocument {
 
 interface PersonaSchemaDocument {
   name: string;
+  description?: string;
   version: number;
   config: Record<string, unknown>;
   isActive: boolean;
@@ -59,6 +62,7 @@ function personaSchemaFromDoc(id: string, data: PersonaSchemaDocument): Persiste
   return {
     id,
     name: data.name,
+    description: data.description,
     version: data.version,
     config: data.config as unknown as PersonaConfig,
     isActive: data.isActive,
@@ -168,6 +172,7 @@ export function createFirestoreSchemaRepository(base: FirestoreBase): SchemaRepo
       const now = Timestamp.now();
       const docData: PersonaSchemaDocument = {
         name: input.name,
+        description: input.description,
         version: input.version,
         config: input.config as unknown as Record<string, unknown>,
         isActive: input.isActive,
@@ -190,6 +195,59 @@ export function createFirestoreSchemaRepository(base: FirestoreBase): SchemaRepo
       }
 
       return personaSchemaFromDoc(docRef.id, docData);
+    },
+
+    async listDomainSchemas(filter?: { isActive?: boolean }): Promise<readonly PersistedDomainSchema[]> {
+      let query = domainRef.orderBy('updatedAt', 'desc');
+      if (filter?.isActive !== undefined) {
+        query = domainRef.where('isActive', '==', filter.isActive).orderBy('updatedAt', 'desc');
+      }
+      const snapshot = await query.get();
+      return snapshot.docs.map((doc) => domainSchemaFromDoc(doc.id, doc.data() as DomainSchemaDocument));
+    },
+
+    async listPersonaSchemas(): Promise<readonly PersistedPersonaSchema[]> {
+      const snapshot = await personaRef.orderBy('updatedAt', 'desc').get();
+      return snapshot.docs.map((doc) => personaSchemaFromDoc(doc.id, doc.data() as PersonaSchemaDocument));
+    },
+
+    async updatePersonaSchema(id: string, updates: UpdatePersonaSchemaInput): Promise<PersistedPersonaSchema> {
+      const docRef = personaRef.doc(id);
+      const doc = await docRef.get();
+      if (!doc.exists) {
+        throw new PersistenceError(`Persona schema not found: ${id}`);
+      }
+
+      const updateData: Record<string, unknown> = {
+        version: FieldValue.increment(1),
+        updatedAt: Timestamp.now(),
+      };
+      if (updates.name !== undefined) {
+        updateData['name'] = updates.name;
+      }
+      if (updates.description !== undefined) {
+        updateData['description'] = updates.description;
+      }
+      if (updates.config !== undefined) {
+        updateData['config'] = updates.config as unknown as Record<string, unknown>;
+      }
+      if (updates.isActive !== undefined) {
+        updateData['isActive'] = updates.isActive;
+      }
+
+      await docRef.update(updateData);
+
+      const updated = await docRef.get();
+      return personaSchemaFromDoc(id, updated.data() as PersonaSchemaDocument);
+    },
+
+    async deletePersonaSchema(id: string): Promise<void> {
+      const docRef = personaRef.doc(id);
+      const doc = await docRef.get();
+      if (!doc.exists) {
+        throw new PersistenceError(`Persona schema not found: ${id}`);
+      }
+      await docRef.delete();
     },
   };
 }
