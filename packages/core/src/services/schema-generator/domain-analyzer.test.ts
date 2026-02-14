@@ -50,6 +50,14 @@ describe('analyzeDomain', () => {
     expect(request['userMessage']).toContain('Language hint: de');
   });
 
+  it('should handle LLM returning null for location', async () => {
+    const llm = createMockLlm({ ...validAnalysis, location: null });
+    const result = await analyzeDomain('A knowledge base about cooking techniques', llm);
+
+    expect(result.subject).toBe('Village of Naugarten');
+    expect(result.location).toBeNull();
+  });
+
   it('should not include language hint when not provided', async () => {
     const invokeFn = vi.fn().mockResolvedValue({
       content: JSON.stringify(validAnalysis),
@@ -89,6 +97,14 @@ describe('DomainAnalysisSchema', () => {
     const withoutLocation = { ...validAnalysis };
     delete (withoutLocation as Record<string, unknown>)['location'];
     const result = DomainAnalysisSchema.safeParse(withoutLocation);
+    expect(result.success).toBe(true);
+  });
+
+  it('should allow null location (LLM may return null for optional fields)', () => {
+    const result = DomainAnalysisSchema.safeParse({
+      ...validAnalysis,
+      location: null,
+    });
     expect(result.success).toBe(true);
   });
 });

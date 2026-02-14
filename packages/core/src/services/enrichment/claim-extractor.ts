@@ -10,7 +10,7 @@ const log = createChildLogger('enrichment:claim-extractor');
 const ExtractedClaimSchema = z.object({
   claim: z.string().min(1),
   verifiable: z.boolean(),
-  searchQuery: z.string().optional(),
+  searchQuery: z.string().nullish(),
 });
 
 const ClaimExtractionSchema = z.object({

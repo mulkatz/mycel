@@ -9,7 +9,7 @@ export interface KnowledgeEnrichment {
 export interface VerifiedClaim {
   readonly claim: string;
   readonly status: 'verified' | 'contradicted' | 'unverifiable';
-  readonly evidence?: string;
+  readonly evidence?: string | null;
   readonly sourceUrl?: string;
   readonly confidence: number;
 }
@@ -17,7 +17,7 @@ export interface VerifiedClaim {
 export interface ExtractedClaim {
   readonly claim: string;
   readonly verifiable: boolean;
-  readonly searchQuery?: string;
+  readonly searchQuery?: string | null;
 }
 
 export interface CachedSearchResult {

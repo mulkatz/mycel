@@ -9,7 +9,7 @@ const log = createChildLogger('schema-generator:domain-analyzer');
 export const DomainAnalysisSchema = z.object({
   domainType: z.string().min(1),
   subject: z.string().min(1),
-  location: z.string().optional(),
+  location: z.string().nullish(),
   language: z.string().min(2).max(5),
   intent: z.string().min(1),
   searchQueries: z.array(z.string().min(1)).min(3).max(10),
@@ -36,7 +36,7 @@ Respond with valid JSON matching this structure:
 {
   "domainType": "string",
   "subject": "string",
-  "location": "string or omit",
+  "location": "string or null",
   "language": "ISO 639-1 code",
   "intent": "string",
   "searchQueries": ["query1", "query2", ...]

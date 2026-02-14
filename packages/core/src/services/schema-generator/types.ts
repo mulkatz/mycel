@@ -51,7 +51,7 @@ export interface SchemaGenerator {
 export interface DomainAnalysis {
   readonly domainType: string;
   readonly subject: string;
-  readonly location?: string;
+  readonly location?: string | null;
   readonly language: string;
   readonly intent: string;
   readonly searchQueries: readonly string[];

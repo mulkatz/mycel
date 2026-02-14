@@ -11,7 +11,7 @@ const log = createChildLogger('enrichment:claim-validator');
 
 const VerificationResultSchema = z.object({
   status: z.enum(['verified', 'contradicted', 'unverifiable']),
-  evidence: z.string().optional(),
+  evidence: z.string().nullish(),
   confidence: z.number().min(0).max(1),
 });
 

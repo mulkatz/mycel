@@ -97,7 +97,7 @@ export const SessionTurnsResponseSchema = z
 export const EnrichmentClaimSchema = z.object({
   claim: z.string(),
   status: z.string(),
-  evidence: z.string().optional(),
+  evidence: z.string().nullish(),
   confidence: z.number(),
   sourceUrl: z.string().optional(),
 });
