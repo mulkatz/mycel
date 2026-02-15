@@ -236,6 +236,11 @@ export function createSchemaGeneratorRoutes(): OpenAPIHono<AppEnv> {
       {
         id: proposal.id,
         status: proposal.status,
+        domain: {
+          ...proposal.proposedSchema,
+          categories: proposal.proposedSchema.categories.map((cat) => ({ ...cat })),
+        },
+        behavior: proposal.behavior,
         reasoning: proposal.reasoning,
         sources: [...proposal.sources],
         createdAt: proposal.createdAt.toISOString(),

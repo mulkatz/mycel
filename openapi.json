@@ -763,6 +763,73 @@
           "status": {
             "type": "string"
           },
+          "domain": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "requiredFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "optionalFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "origin": {
+                      "type": "string"
+                    },
+                    "sourceUrls": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "description"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "name",
+              "version",
+              "description",
+              "categories"
+            ]
+          },
+          "behavior": {
+            "type": "object",
+            "additionalProperties": {}
+          },
           "reasoning": {
             "type": "string"
           },
@@ -1605,7 +1672,10 @@
                       "type": "string"
                     },
                     "evidence": {
-                      "type": "string"
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "confidence": {
                       "type": "number"

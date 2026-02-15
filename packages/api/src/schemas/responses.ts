@@ -198,6 +198,15 @@ export const SchemaProposalResponseSchema = z
   .object({
     id: z.string(),
     status: z.string(),
+    domain: z
+      .object({
+        name: z.string(),
+        version: z.string(),
+        description: z.string(),
+        categories: z.array(CategorySchema),
+      })
+      .optional(),
+    behavior: z.record(z.unknown()).optional(),
     reasoning: z.string().optional(),
     sources: z.array(z.string()).optional(),
     createdAt: z.string().optional(),
