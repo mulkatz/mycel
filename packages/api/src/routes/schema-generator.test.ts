@@ -308,6 +308,141 @@ describe('Schema Generator API Routes', () => {
     });
   });
 
+  describe('GET /domains/proposals', () => {
+    it('should return empty array when no proposals exist', async () => {
+      const res = await app.request('/domains/proposals');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { proposals: unknown[] };
+      expect(body.proposals).toEqual([]);
+    });
+
+    it('should return all proposals without status filter', async () => {
+      // Create two proposals via the service
+      await schemaGenerator.generate({ description: 'First proposal test' });
+      const second = await schemaGenerator.generate({ description: 'Second proposal test' });
+      await schemaGenerator.executeGeneration(second.proposalId, { description: 'Second proposal test' });
+      await flushPromises();
+
+      const res = await app.request('/domains/proposals');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { proposals: Array<{ id: string; status: string }> };
+      expect(body.proposals).toHaveLength(2);
+    });
+
+    it('should filter by single status', async () => {
+      // Create a generating proposal and a pending one
+      await schemaGenerator.generate({ description: 'Generating proposal test' });
+
+      const genRes = await app.request(
+        '/domains/generate',
+        jsonPost('/domains/generate', {
+          description: 'A village website for Naugarten, Brandenburg',
+        }),
+      );
+      await flushPromises();
+      const genBody = (await genRes.json()) as { proposalId: string };
+
+      // Now we have one 'generating' and one 'pending'
+      const res = await app.request('/domains/proposals?status=pending');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { proposals: Array<{ id: string; status: string }> };
+      expect(body.proposals.length).toBeGreaterThanOrEqual(1);
+      for (const p of body.proposals) {
+        expect(p.status).toBe('pending');
+      }
+      expect(body.proposals.some((p) => p.id === genBody.proposalId)).toBe(true);
+    });
+
+    it('should filter by multiple statuses', async () => {
+      await schemaGenerator.generate({ description: 'Generating proposal test' });
+
+      const genRes = await app.request(
+        '/domains/generate',
+        jsonPost('/domains/generate', {
+          description: 'A village website for Naugarten, Brandenburg',
+        }),
+      );
+      await flushPromises();
+
+      const res = await app.request('/domains/proposals?status=pending,generating');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { proposals: Array<{ id: string; status: string }> };
+      expect(body.proposals.length).toBeGreaterThanOrEqual(2);
+      for (const p of body.proposals) {
+        expect(['pending', 'generating']).toContain(p.status);
+      }
+    });
+
+    it('should return domain: null for generating proposals', async () => {
+      await schemaGenerator.generate({ description: 'Generating proposal test' });
+
+      const res = await app.request('/domains/proposals?status=generating');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { proposals: Array<{ domain: unknown }> };
+      expect(body.proposals.length).toBeGreaterThanOrEqual(1);
+      expect(body.proposals[0]!.domain).toBeNull();
+    });
+
+    it('should return failureReason for failed proposals', async () => {
+      const failingLlm: LlmClient = {
+        invoke: vi.fn().mockRejectedValue(new Error('LLM unavailable')),
+      };
+      const failingProposalRepo = createInMemorySchemaProposalRepository();
+      const failingGenerator = createSchemaGenerator({
+        llmClient: failingLlm,
+        webSearchClient: createMockWebSearchClient(),
+        proposalRepository: failingProposalRepo,
+        schemaRepository: createInMemorySchemaRepository(),
+      });
+
+      const failResult = await failingGenerator.generate({ description: 'Test failing generation' });
+      await failingGenerator.executeGeneration(failResult.proposalId, { description: 'Test failing generation' });
+
+      // Build a new test app with the failing repo
+      const failApp = createTestApp(
+        {
+          sessionRepository: createInMemorySessionRepository(),
+          knowledgeRepository: createInMemoryKnowledgeRepository(),
+          schemaRepository: createInMemorySchemaRepository(),
+          schemaProposalRepository: failingProposalRepo,
+          schemaGenerator: failingGenerator,
+        } as TenantRepositories,
+        { llmClient: failingLlm } as SharedDeps,
+      );
+
+      const res = await failApp.request('/domains/proposals?status=failed');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { proposals: Array<{ status: string; failureReason?: string }> };
+      expect(body.proposals).toHaveLength(1);
+      expect(body.proposals[0]!.status).toBe('failed');
+      expect(body.proposals[0]!.failureReason).toBeDefined();
+    });
+
+    it('should return results sorted by createdAt descending', async () => {
+      await schemaGenerator.generate({ description: 'First proposal created' });
+      // Small delay to ensure different timestamps
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      await schemaGenerator.generate({ description: 'Second proposal created' });
+
+      const res = await app.request('/domains/proposals');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { proposals: Array<{ createdAt: string }> };
+      expect(body.proposals.length).toBeGreaterThanOrEqual(2);
+
+      const dates = body.proposals.map((p) => new Date(p.createdAt).getTime());
+      for (let i = 1; i < dates.length; i++) {
+        expect(dates[i - 1]!).toBeGreaterThanOrEqual(dates[i]!);
+      }
+    });
+
+    it('should return 400 for invalid status value', async () => {
+      const res = await app.request('/domains/proposals?status=invalid');
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toHaveProperty('code', 'VALIDATION_ERROR');
+    });
+  });
+
   describe('executeGeneration failure handling', () => {
     it('should set proposal to failed when generation errors', async () => {
       const failingLlm: LlmClient = {

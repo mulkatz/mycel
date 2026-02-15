@@ -595,6 +595,61 @@
           "description"
         ]
       },
+      "SchemaProposalSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "domain": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "description"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "failureReason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "domain",
+          "createdAt"
+        ]
+      },
+      "SchemaProposalListResponse": {
+        "type": "object",
+        "properties": {
+          "proposals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchemaProposalSummary"
+            }
+          }
+        },
+        "required": [
+          "proposals"
+        ]
+      },
       "SchemaReviewResponse": {
         "type": "object",
         "properties": {
@@ -2152,6 +2207,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SchemaGenerateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domains/proposals": {
+      "get": {
+        "tags": [
+          "Schema Generator"
+        ],
+        "summary": "List schema proposals",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of schema proposals",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaProposalListResponse"
                 }
               }
             }

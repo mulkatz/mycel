@@ -8,7 +8,10 @@ import {
   SchemaGenerateResponseSchema,
   SchemaReviewResponseSchema,
   SchemaProposalResponseSchema,
+  SchemaProposalListResponseSchema,
 } from '../schemas/responses.js';
+import { ListProposalsQuerySchema } from '../schemas/requests.js';
+import type { ProposalStatus } from '@mycel/core/src/repositories/schema-proposal.repository.js';
 
 const GenerateSchemaRequestSchema = z
   .object({
@@ -136,6 +139,36 @@ const reviewProposalRoute = createRoute({
   },
 });
 
+const VALID_PROPOSAL_STATUSES = new Set<string>(['generating', 'pending', 'approved', 'rejected', 'failed']);
+
+const listProposalsRoute = createRoute({
+  method: 'get',
+  path: '/proposals',
+  tags: ['Schema Generator'],
+  summary: 'List schema proposals',
+  request: {
+    query: ListProposalsQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'List of schema proposals',
+      content: {
+        'application/json': {
+          schema: SchemaProposalListResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Validation error',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
 const getProposalRoute = createRoute({
   method: 'get',
   path: '/proposals/{proposalId}',
@@ -195,6 +228,46 @@ export function createSchemaGeneratorRoutes(): OpenAPIHono<AppEnv> {
         status: result.status,
       },
       202,
+    );
+  });
+
+  routes.openapi(listProposalsRoute, async (c) => {
+    const { status } = c.req.valid('query');
+    const { schemaGenerator } = c.get('tenantRepos');
+
+    let statuses: ProposalStatus[] | undefined;
+    if (status) {
+      const parts = status.split(',').map((s) => s.trim());
+      const invalid = parts.filter((s) => !VALID_PROPOSAL_STATUSES.has(s));
+      if (invalid.length > 0) {
+        return c.json(
+          {
+            error: `Invalid status values: ${invalid.join(', ')}`,
+            code: 'VALIDATION_ERROR',
+            requestId: c.get('requestId'),
+          },
+          400,
+        );
+      }
+      statuses = parts as ProposalStatus[];
+    }
+
+    const proposals = await schemaGenerator.listProposals(statuses ? { statuses } : undefined);
+
+    return c.json(
+      {
+        proposals: proposals.map((p) => ({
+          id: p.id,
+          status: p.status,
+          domain:
+            p.status === 'generating'
+              ? null
+              : { name: p.proposedSchema.name, description: p.proposedSchema.description },
+          createdAt: p.createdAt.toISOString(),
+          ...(p.status === 'failed' && p.failureReason ? { failureReason: p.failureReason } : {}),
+        })),
+      },
+      200,
     );
   });
 

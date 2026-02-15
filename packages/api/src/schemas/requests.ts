@@ -40,6 +40,13 @@ export const ListDomainsQuerySchema = z
   })
   .openapi('ListDomainsQuery');
 
+// Schema Proposals
+export const ListProposalsQuerySchema = z
+  .object({
+    status: z.string().optional(),
+  })
+  .openapi('ListProposalsQuery');
+
 // Entries
 export const ListEntriesQuerySchema = z
   .object({

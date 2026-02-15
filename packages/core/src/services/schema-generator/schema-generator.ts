@@ -11,7 +11,7 @@ import type {
   ReviewResult,
   SchemaGenerator,
 } from './types.js';
-import type { SchemaProposal } from '../../repositories/schema-proposal.repository.js';
+import type { SchemaProposal, ListProposalsFilter } from '../../repositories/schema-proposal.repository.js';
 import { analyzeDomain } from './domain-analyzer.js';
 import { synthesizeSchema } from './schema-synthesizer.js';
 import type { WebSearchResult } from '../web-search/types.js';
@@ -226,6 +226,10 @@ export function createSchemaGenerator(deps: SchemaGeneratorDeps): SchemaGenerato
 
     async getProposal(proposalId: string): Promise<SchemaProposal | null> {
       return proposalRepository.getProposal(proposalId);
+    },
+
+    async listProposals(filter?: ListProposalsFilter): Promise<readonly SchemaProposal[]> {
+      return proposalRepository.listProposals(filter);
     },
   };
 }

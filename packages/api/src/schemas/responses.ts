@@ -206,6 +206,27 @@ export const SchemaProposalResponseSchema = z
   })
   .openapi('SchemaProposalResponse');
 
+export const SchemaProposalSummarySchema = z
+  .object({
+    id: z.string(),
+    status: z.string(),
+    domain: z
+      .object({
+        name: z.string(),
+        description: z.string(),
+      })
+      .nullable(),
+    createdAt: z.string(),
+    failureReason: z.string().optional(),
+  })
+  .openapi('SchemaProposalSummary');
+
+export const SchemaProposalListResponseSchema = z
+  .object({
+    proposals: z.array(SchemaProposalSummarySchema),
+  })
+  .openapi('SchemaProposalListResponse');
+
 // Evolution
 export const EvolutionProposalSummarySchema = z.object({
   id: z.string(),

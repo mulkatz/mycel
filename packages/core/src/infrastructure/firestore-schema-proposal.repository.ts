@@ -5,6 +5,7 @@ import type { DomainBehaviorConfig } from '@mycel/schemas/src/domain-behavior.sc
 import { PersistenceError } from '@mycel/shared/src/utils/errors.js';
 import type {
   CreateSchemaProposalInput,
+  ListProposalsFilter,
   SchemaProposal,
   SchemaProposalRepository,
   UpdateSchemaProposalInput,
@@ -57,6 +58,17 @@ export function createFirestoreSchemaProposalRepository(base: FirestoreBase): Sc
         return null;
       }
       return proposalFromDoc(id, doc.data() as ProposalDocument);
+    },
+
+    async listProposals(filter?: ListProposalsFilter): Promise<readonly SchemaProposal[]> {
+      let query: FirebaseFirestore.Query = collectionRef.orderBy('createdAt', 'desc');
+
+      if (filter?.statuses && filter.statuses.length > 0) {
+        query = query.where('status', 'in', [...filter.statuses]);
+      }
+
+      const snapshot = await query.get();
+      return snapshot.docs.map((doc) => proposalFromDoc(doc.id, doc.data() as ProposalDocument));
     },
 
     async saveProposal(input: CreateSchemaProposalInput): Promise<SchemaProposal> {

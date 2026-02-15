@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { PersistenceError } from '@mycel/shared/src/utils/errors.js';
 import type {
   CreateSchemaProposalInput,
+  ListProposalsFilter,
   SchemaProposal,
   SchemaProposalRepository,
   UpdateSchemaProposalInput,
@@ -13,6 +14,18 @@ export function createInMemorySchemaProposalRepository(): SchemaProposalReposito
   return {
     getProposal(id: string): Promise<SchemaProposal | null> {
       return Promise.resolve(proposals.get(id) ?? null);
+    },
+
+    listProposals(filter?: ListProposalsFilter): Promise<readonly SchemaProposal[]> {
+      let result = [...proposals.values()];
+
+      if (filter?.statuses && filter.statuses.length > 0) {
+        const allowed = new Set(filter.statuses);
+        result = result.filter((p) => allowed.has(p.status));
+      }
+
+      result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      return Promise.resolve(result);
     },
 
     saveProposal(input: CreateSchemaProposalInput): Promise<SchemaProposal> {

@@ -42,8 +42,13 @@ export interface UpdateSchemaProposalInput {
   readonly failedAt?: Date;
 }
 
+export interface ListProposalsFilter {
+  readonly statuses?: readonly ProposalStatus[];
+}
+
 export interface SchemaProposalRepository {
   getProposal(id: string): Promise<SchemaProposal | null>;
+  listProposals(filter?: ListProposalsFilter): Promise<readonly SchemaProposal[]>;
   saveProposal(input: CreateSchemaProposalInput): Promise<SchemaProposal>;
   updateProposal(id: string, input: UpdateSchemaProposalInput): Promise<SchemaProposal>;
 }
