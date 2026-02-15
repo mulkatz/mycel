@@ -93,7 +93,7 @@ describe('createContextDispatcherNode', () => {
     expect(searchSimilarFn).toHaveBeenCalledWith({
       domainSchemaId: 'test-domain',
       embedding: createMockEmbedding(),
-      limit: 5,
+      limit: 15,
     });
 
     expect(result.contextDispatcherOutput?.result.relevantContext).toHaveLength(1);

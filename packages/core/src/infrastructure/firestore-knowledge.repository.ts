@@ -16,8 +16,8 @@ import { createChildLogger } from '@mycel/shared/src/logger.js';
 const log = createChildLogger('firestore:knowledge');
 
 const COLLECTION = 'knowledgeEntries';
-const MIN_SIMILARITY_SCORE = 0.5;
-const DEFAULT_SEARCH_LIMIT = 5;
+const MIN_SIMILARITY_SCORE = 0.3;
+const DEFAULT_SEARCH_LIMIT = 15;
 
 interface KnowledgeEntryDocument {
   sessionId: string;

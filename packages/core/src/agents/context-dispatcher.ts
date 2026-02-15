@@ -27,8 +27,7 @@ function buildContextSummary(
 
   for (const r of results) {
     const category = r.entry.categoryId !== '_uncategorized' ? `[${r.entry.categoryId}] ` : '';
-    const content =
-      r.entry.content.length > 150 ? r.entry.content.slice(0, 150) + '...' : r.entry.content;
+    const content = r.entry.content;
 
     let enrichmentMarker = '';
     if (r.entry.enrichment?.claims) {
@@ -108,7 +107,7 @@ export function createContextDispatcherNode(
       relevantContext = await deps.knowledgeRepository.searchSimilar({
         domainSchemaId: deps.domainSchemaId,
         embedding,
-        limit: 5,
+        limit: 15,
       });
 
       log.info(
