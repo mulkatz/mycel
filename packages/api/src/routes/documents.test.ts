@@ -54,15 +54,17 @@ describe('Document Routes', () => {
   let app: OpenAPIHono<AppEnv>;
   let schemaRepo: SchemaRepository;
   let mockGenerator: DocumentGenerator;
+  let domainSchemaId: string;
 
   beforeEach(async () => {
     schemaRepo = createInMemorySchemaRepository();
-    await schemaRepo.saveDomainSchema({
+    const persisted = await schemaRepo.saveDomainSchema({
       name: 'test-domain',
       version: 1,
       config: domainConfig,
       isActive: true,
     });
+    domainSchemaId = persisted.id;
 
     mockGenerator = {
       generate: vi.fn().mockResolvedValue(mockDocument),
@@ -83,7 +85,7 @@ describe('Document Routes', () => {
 
   describe('POST /domains/:domainSchemaId/documents/generate', () => {
     it('should generate a document and return meta + chapters', async () => {
-      const res = await app.request('/domains/test-domain/documents/generate', {
+      const res = await app.request(`/domains/${domainSchemaId}/documents/generate`, {
         method: 'POST',
       });
 
@@ -94,7 +96,6 @@ describe('Document Routes', () => {
       expect(body).toHaveProperty('chapters');
 
       const meta = body['meta'] as Record<string, unknown>;
-      expect(meta['domainSchemaId']).toBe('test-domain');
       expect(meta['totalEntries']).toBe(3);
 
       const chapters = body['chapters'] as Array<Record<string, unknown>>;
@@ -118,7 +119,7 @@ describe('Document Routes', () => {
 
   describe('GET /domains/:domainSchemaId/documents/latest', () => {
     it('should return index.md as markdown', async () => {
-      const res = await app.request('/domains/test-domain/documents/latest');
+      const res = await app.request(`/domains/${domainSchemaId}/documents/latest`);
 
       expect(res.status).toBe(200);
       expect(res.headers.get('content-type')).toContain('text/markdown');
@@ -130,7 +131,7 @@ describe('Document Routes', () => {
     it('should return 404 when no document exists', async () => {
       vi.mocked(mockGenerator.getLatest).mockResolvedValue(null);
 
-      const res = await app.request('/domains/test-domain/documents/latest');
+      const res = await app.request(`/domains/${domainSchemaId}/documents/latest`);
 
       expect(res.status).toBe(404);
       const body = (await res.json()) as Record<string, unknown>;
@@ -140,18 +141,17 @@ describe('Document Routes', () => {
 
   describe('GET /domains/:domainSchemaId/documents/latest/meta', () => {
     it('should return meta as JSON', async () => {
-      const res = await app.request('/domains/test-domain/documents/latest/meta');
+      const res = await app.request(`/domains/${domainSchemaId}/documents/latest/meta`);
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as Record<string, unknown>;
-      expect(body['domainSchemaId']).toBe('test-domain');
       expect(body['totalEntries']).toBe(3);
     });
   });
 
   describe('GET /domains/:domainSchemaId/documents/latest/:filename', () => {
     it('should return chapter content as markdown', async () => {
-      const res = await app.request('/domains/test-domain/documents/latest/01-history.md');
+      const res = await app.request(`/domains/${domainSchemaId}/documents/latest/01-history.md`);
 
       expect(res.status).toBe(200);
       expect(res.headers.get('content-type')).toContain('text/markdown');
@@ -161,7 +161,7 @@ describe('Document Routes', () => {
     });
 
     it('should return 404 for unknown chapter', async () => {
-      const res = await app.request('/domains/test-domain/documents/latest/99-unknown.md');
+      const res = await app.request(`/domains/${domainSchemaId}/documents/latest/99-unknown.md`);
 
       expect(res.status).toBe(404);
       const body = (await res.json()) as Record<string, unknown>;

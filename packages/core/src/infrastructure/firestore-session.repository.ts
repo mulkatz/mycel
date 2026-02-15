@@ -23,6 +23,7 @@ const TURNS_SUBCOLLECTION = 'turns';
 interface SessionDocument {
   domainConfigName: string;
   personaConfigName: string;
+  domainSchemaId?: string;
   status: SessionStatus;
   turnCount: number;
   currentEntry?: Record<string, unknown>;
@@ -44,6 +45,7 @@ function sessionFromDoc(id: string, data: SessionDocument, turns: readonly Turn[
     id,
     domainConfigName: data.domainConfigName,
     personaConfigName: data.personaConfigName,
+    domainSchemaId: data.domainSchemaId,
     status: data.status,
     turnCount: data.turnCount,
     turns,
@@ -74,6 +76,7 @@ export function createFirestoreSessionRepository(base: FirestoreBase): SessionRe
       const docData: SessionDocument = {
         domainConfigName: input.domainConfigName,
         personaConfigName: input.personaConfigName,
+        domainSchemaId: input.domainSchemaId,
         status: 'active',
         turnCount: 0,
         metadata: input.metadata,

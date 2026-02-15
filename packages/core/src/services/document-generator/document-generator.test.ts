@@ -80,7 +80,7 @@ describe('createDocumentGenerator', () => {
     const knowledgeRepo = createInMemoryKnowledgeRepository();
     const schemaRepo = createInMemorySchemaRepository();
 
-    await schemaRepo.saveDomainSchema({
+    const persisted = await schemaRepo.saveDomainSchema({
       name: 'test-domain',
       version: 1,
       config: domainConfig,
@@ -92,12 +92,14 @@ describe('createDocumentGenerator', () => {
       title: 'Old Church',
       content: 'Built in 1732.',
       structuredData: { period: '18th century' },
+      domainSchemaId: persisted.id,
     }));
     await knowledgeRepo.create(makeEntryInput({
       categoryId: 'nature',
       title: 'The Lake',
       content: 'A beautiful lake.',
       structuredData: {},
+      domainSchemaId: persisted.id,
     }));
 
     const mockTextLlm: TextLlmClient = {
@@ -116,10 +118,10 @@ describe('createDocumentGenerator', () => {
       firestoreBase: createMockFirestore(),
     });
 
-    const result = await generator.generate({ domainSchemaId: 'test-domain' });
+    const result = await generator.generate({ domainSchemaId: persisted.id });
 
     // Check meta
-    expect(result.meta.domainSchemaId).toBe('test-domain');
+    expect(result.meta.domainSchemaId).toBe(persisted.id);
     expect(result.meta.totalEntries).toBe(2);
     expect(result.meta.totalChapters).toBe(2);
     expect(result.meta.chaptersWithContent).toBe(2);
@@ -147,7 +149,7 @@ describe('createDocumentGenerator', () => {
     const knowledgeRepo = createInMemoryKnowledgeRepository();
     const schemaRepo = createInMemorySchemaRepository();
 
-    await schemaRepo.saveDomainSchema({
+    const persisted = await schemaRepo.saveDomainSchema({
       name: 'empty-domain',
       version: 1,
       config: domainConfig,
@@ -163,7 +165,7 @@ describe('createDocumentGenerator', () => {
       firestoreBase: createMockFirestore(),
     });
 
-    const result = await generator.generate({ domainSchemaId: 'empty-domain' });
+    const result = await generator.generate({ domainSchemaId: persisted.id });
 
     expect(result.meta.totalEntries).toBe(0);
     expect(result.meta.chaptersEmpty).toBe(2);
@@ -179,7 +181,7 @@ describe('createDocumentGenerator', () => {
     const knowledgeRepo = createInMemoryKnowledgeRepository();
     const schemaRepo = createInMemorySchemaRepository();
 
-    await schemaRepo.saveDomainSchema({
+    const persisted = await schemaRepo.saveDomainSchema({
       name: 'test-domain',
       version: 1,
       config: domainConfig,
@@ -189,6 +191,7 @@ describe('createDocumentGenerator', () => {
     // Entry missing 'sources' required field
     await knowledgeRepo.create(makeEntryInput({
       structuredData: { period: '18th century' },
+      domainSchemaId: persisted.id,
     }));
 
     const mockTextLlm: TextLlmClient = {
@@ -204,7 +207,7 @@ describe('createDocumentGenerator', () => {
       firestoreBase: createMockFirestore(),
     });
 
-    const result = await generator.generate({ domainSchemaId: 'test-domain' });
+    const result = await generator.generate({ domainSchemaId: persisted.id });
 
     const historyChapter = result.chapters.find((c) => c.filename === '01-history.md');
     expect(historyChapter?.gapCount).toBeGreaterThan(0);
@@ -216,7 +219,7 @@ describe('createDocumentGenerator', () => {
     const knowledgeRepo = createInMemoryKnowledgeRepository();
     const schemaRepo = createInMemorySchemaRepository();
 
-    await schemaRepo.saveDomainSchema({
+    const persisted = await schemaRepo.saveDomainSchema({
       name: 'test-domain',
       version: 1,
       config: domainConfig,
@@ -227,6 +230,7 @@ describe('createDocumentGenerator', () => {
       categoryId: 'history',
       title: 'Old Church',
       structuredData: { period: '18th century' },
+      domainSchemaId: persisted.id,
     }));
 
     const mockTextLlm: TextLlmClient = {
@@ -243,8 +247,8 @@ describe('createDocumentGenerator', () => {
       firestoreBase: mockFirestore,
     });
 
-    await generator.generate({ domainSchemaId: 'test-domain' });
-    const retrieved = await generator.getLatest('test-domain');
+    await generator.generate({ domainSchemaId: persisted.id });
+    const retrieved = await generator.getLatest(persisted.id);
 
     expect(retrieved).not.toBeNull();
     const historyChapter = retrieved!.chapters.find((c) => c.filename === '01-history.md');

@@ -211,14 +211,17 @@ const endSessionRoute = createRoute({
 
 async function resolveSessionSchemas(
   schemaRepository: SchemaRepository,
-  session: { domainConfigName: string; personaConfigName: string },
+  session: { domainConfigName: string; personaConfigName: string; domainSchemaId?: string },
 ): Promise<{
   domainSchema: NonNullable<Awaited<ReturnType<SchemaRepository['getDomainSchemaByName']>>>;
   personaSchema: NonNullable<Awaited<ReturnType<SchemaRepository['getPersonaSchemaByName']>>>;
 }> {
-  const domainSchema =
-    (await schemaRepository.getDomainSchemaByName(session.domainConfigName)) ??
-    (await schemaRepository.getDomainSchema(session.domainConfigName));
+  // If session has a Firestore doc ID, look up by ID first; fallback to name for old sessions
+  const domainSchema = session.domainSchemaId
+    ? ((await schemaRepository.getDomainSchema(session.domainSchemaId)) ??
+       (await schemaRepository.getDomainSchemaByName(session.domainConfigName)))
+    : ((await schemaRepository.getDomainSchemaByName(session.domainConfigName)) ??
+       (await schemaRepository.getDomainSchema(session.domainConfigName)));
   const personaSchema =
     (await schemaRepository.getPersonaSchemaByName(session.personaConfigName)) ??
     (await schemaRepository.getPersonaSchema(session.personaConfigName));
@@ -253,7 +256,7 @@ export function createSessionRoutes(shared: SharedDeps): OpenAPIHono<AppEnv> {
         sessions: results.map((s) => ({
           sessionId: s.id,
           status: s.status,
-          domainSchemaId: s.domainConfigName,
+          domainSchemaId: s.domainSchemaId ?? s.domainConfigName,
           personaSchemaId: s.personaConfigName,
           turnCount: s.turnCount,
           createdAt: s.createdAt.toISOString(),
@@ -335,6 +338,7 @@ export function createSessionRoutes(shared: SharedDeps): OpenAPIHono<AppEnv> {
         personaConfig,
         llmClient: shared.llmClient,
       },
+      domainSchemaId: domainSchema.id,
       sessionRepository,
       knowledgeRepository,
       embeddingClient: shared.embeddingClient,
@@ -378,6 +382,7 @@ export function createSessionRoutes(shared: SharedDeps): OpenAPIHono<AppEnv> {
         personaConfig: personaSchema.config,
         llmClient: shared.llmClient,
       },
+      domainSchemaId: domainSchema.id,
       sessionRepository,
       knowledgeRepository,
       embeddingClient: shared.embeddingClient,
@@ -446,6 +451,7 @@ export function createSessionRoutes(shared: SharedDeps): OpenAPIHono<AppEnv> {
         personaConfig: personaSchema.config,
         llmClient: shared.llmClient,
       },
+      domainSchemaId: domainSchema.id,
       sessionRepository,
       knowledgeRepository,
       embeddingClient: shared.embeddingClient,

@@ -20,6 +20,7 @@ export function createInMemorySessionRepository(): SessionRepository {
         id: randomUUID(),
         domainConfigName: input.domainConfigName,
         personaConfigName: input.personaConfigName,
+        domainSchemaId: input.domainSchemaId,
         status: 'active',
         turnCount: 0,
         turns: [],

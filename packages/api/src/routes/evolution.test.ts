@@ -55,6 +55,7 @@ describe('Evolution API Routes', () => {
   let proposalRepo: ReturnType<typeof createInMemoryEvolutionProposalRepository>;
   let fieldStatsRepo: ReturnType<typeof createInMemoryFieldStatsRepository>;
   let schemaRepo: ReturnType<typeof createInMemorySchemaRepository>;
+  let domainSchemaId: string;
 
   beforeEach(async () => {
     const llmClient: LlmClient = {
@@ -72,7 +73,7 @@ describe('Evolution API Routes', () => {
     proposalRepo = createInMemoryEvolutionProposalRepository();
     fieldStatsRepo = createInMemoryFieldStatsRepository();
 
-    await schemaRepo.saveDomainSchema({
+    const persisted = await schemaRepo.saveDomainSchema({
       name: 'test-domain',
       version: 1,
       config: testDomainConfig,
@@ -80,6 +81,7 @@ describe('Evolution API Routes', () => {
       origin: 'manual',
       isActive: true,
     });
+    domainSchemaId = persisted.id;
 
     const schemaEvolutionService = createSchemaEvolutionService({
       knowledgeRepository: createInMemoryKnowledgeRepository(),
@@ -106,13 +108,13 @@ describe('Evolution API Routes', () => {
   describe('POST /domains/:domainSchemaId/evolution/analyze', () => {
     it('should trigger analysis and return proposals', async () => {
       const res = await app.request(
-        '/domains/test-domain/evolution/analyze',
+        `/domains/${domainSchemaId}/evolution/analyze`,
         { method: 'POST' },
       );
 
       expect(res.status).toBe(201);
       const body = (await res.json()) as Record<string, unknown>;
-      expect(body).toHaveProperty('domainSchemaId', 'test-domain');
+      expect(body).toHaveProperty('domainSchemaId', domainSchemaId);
       expect(body).toHaveProperty('proposalCount');
     });
   });
@@ -120,14 +122,14 @@ describe('Evolution API Routes', () => {
   describe('GET /domains/:domainSchemaId/evolution/proposals', () => {
     it('should list proposals', async () => {
       await proposalRepo.create({
-        domainSchemaId: 'test-domain',
+        domainSchemaId,
         type: 'new_category',
         description: 'Test proposal',
         evidence: [],
         confidence: 0.8,
       });
 
-      const res = await app.request('/domains/test-domain/evolution/proposals');
+      const res = await app.request(`/domains/${domainSchemaId}/evolution/proposals`);
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as { proposals: unknown[] };
@@ -138,7 +140,7 @@ describe('Evolution API Routes', () => {
   describe('GET /domains/:domainSchemaId/evolution/proposals/:proposalId', () => {
     it('should return a specific proposal', async () => {
       const proposal = await proposalRepo.create({
-        domainSchemaId: 'test-domain',
+        domainSchemaId,
         type: 'new_category',
         description: 'Test proposal',
         evidence: [],
@@ -152,14 +154,14 @@ describe('Evolution API Routes', () => {
       });
 
       const res = await app.request(
-        `/domains/test-domain/evolution/proposals/${proposal.id}`,
+        `/domains/${domainSchemaId}/evolution/proposals/${proposal.id}`,
       );
       expect(res.status).toBe(200);
     });
 
     it('should return 404 for nonexistent proposal', async () => {
       const res = await app.request(
-        '/domains/test-domain/evolution/proposals/nonexistent',
+        `/domains/${domainSchemaId}/evolution/proposals/nonexistent`,
       );
       expect(res.status).toBe(404);
     });
@@ -168,7 +170,7 @@ describe('Evolution API Routes', () => {
   describe('POST /domains/:domainSchemaId/evolution/proposals/:proposalId/review', () => {
     it('should approve a proposal', async () => {
       const proposal = await proposalRepo.create({
-        domainSchemaId: 'test-domain',
+        domainSchemaId,
         type: 'change_priority',
         description: 'Test',
         evidence: [],
@@ -182,8 +184,8 @@ describe('Evolution API Routes', () => {
       });
 
       const res = await app.request(
-        `/domains/test-domain/evolution/proposals/${proposal.id}/review`,
-        jsonPost(`/domains/test-domain/evolution/proposals/${proposal.id}/review`, {
+        `/domains/${domainSchemaId}/evolution/proposals/${proposal.id}/review`,
+        jsonPost(`/domains/${domainSchemaId}/evolution/proposals/${proposal.id}/review`, {
           decision: 'approve',
         }),
       );
@@ -195,7 +197,7 @@ describe('Evolution API Routes', () => {
 
     it('should reject a proposal', async () => {
       const proposal = await proposalRepo.create({
-        domainSchemaId: 'test-domain',
+        domainSchemaId,
         type: 'new_category',
         description: 'Test',
         evidence: [],
@@ -203,8 +205,8 @@ describe('Evolution API Routes', () => {
       });
 
       const res = await app.request(
-        `/domains/test-domain/evolution/proposals/${proposal.id}/review`,
-        jsonPost(`/domains/test-domain/evolution/proposals/${proposal.id}/review`, {
+        `/domains/${domainSchemaId}/evolution/proposals/${proposal.id}/review`,
+        jsonPost(`/domains/${domainSchemaId}/evolution/proposals/${proposal.id}/review`, {
           decision: 'reject',
           feedback: 'Not relevant',
         }),
@@ -218,10 +220,10 @@ describe('Evolution API Routes', () => {
 
   describe('GET /domains/:domainSchemaId/evolution/stats', () => {
     it('should return field stats', async () => {
-      await fieldStatsRepo.incrementAsked('test-domain', 'history', 'period');
-      await fieldStatsRepo.incrementAnswered('test-domain', 'history', 'period');
+      await fieldStatsRepo.incrementAsked(domainSchemaId, 'history', 'period');
+      await fieldStatsRepo.incrementAnswered(domainSchemaId, 'history', 'period');
 
-      const res = await app.request('/domains/test-domain/evolution/stats');
+      const res = await app.request(`/domains/${domainSchemaId}/evolution/stats`);
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as { stats: unknown[] };

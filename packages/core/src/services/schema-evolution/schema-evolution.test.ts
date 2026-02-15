@@ -81,7 +81,7 @@ describe('SchemaEvolutionService', () => {
   }
 
   it('should return empty proposals for fixed mode', async () => {
-    await setupSchema(fixedBehavior);
+    const schema = await setupSchema(fixedBehavior);
     const invokeMock = vi.fn().mockResolvedValue({
       content: JSON.stringify({
         categoryId: 'traditions',
@@ -99,7 +99,7 @@ describe('SchemaEvolutionService', () => {
       llmClient,
     });
 
-    const proposals = await service.analyze('test-domain');
+    const proposals = await service.analyze(schema.id);
     expect(proposals).toEqual([]);
     expect(invokeMock).not.toHaveBeenCalled();
   });
@@ -117,13 +117,13 @@ describe('SchemaEvolutionService', () => {
   });
 
   it('should generate change_priority proposals for low answer rate fields', async () => {
-    await setupSchema(suggestBehavior);
+    const schema = await setupSchema(suggestBehavior);
 
-    // Simulate low answer rate
+    // Simulate low answer rate — use schema.id as domainSchemaId
     for (let i = 0; i < 12; i++) {
-      await fieldStatsRepo.incrementAsked('test-domain', 'history', 'location');
+      await fieldStatsRepo.incrementAsked(schema.id, 'history', 'location');
     }
-    await fieldStatsRepo.incrementAnswered('test-domain', 'history', 'location');
+    await fieldStatsRepo.incrementAnswered(schema.id, 'history', 'location');
 
     const service = createSchemaEvolutionService({
       knowledgeRepository: knowledgeRepo,
@@ -133,7 +133,7 @@ describe('SchemaEvolutionService', () => {
       llmClient: createMockLlmClient(),
     });
 
-    const proposals = await service.analyze('test-domain');
+    const proposals = await service.analyze(schema.id);
     const priorityProposals = proposals.filter((p) => p.type === 'change_priority');
     expect(priorityProposals).toHaveLength(1);
     expect(priorityProposals[0].changePriority?.fieldName).toBe('location');
@@ -141,10 +141,10 @@ describe('SchemaEvolutionService', () => {
   });
 
   it('should review and approve a proposal', async () => {
-    await setupSchema(suggestBehavior);
+    const schema = await setupSchema(suggestBehavior);
 
     const proposal = await proposalRepo.create({
-      domainSchemaId: 'test-domain',
+      domainSchemaId: schema.id,
       type: 'change_priority',
       description: 'Test priority change',
       evidence: [],
@@ -177,10 +177,10 @@ describe('SchemaEvolutionService', () => {
   });
 
   it('should reject a proposal', async () => {
-    await setupSchema(suggestBehavior);
+    const schema = await setupSchema(suggestBehavior);
 
     const proposal = await proposalRepo.create({
-      domainSchemaId: 'test-domain',
+      domainSchemaId: schema.id,
       type: 'new_category',
       description: 'Test category',
       evidence: [],
@@ -209,8 +209,9 @@ describe('SchemaEvolutionService', () => {
   });
 
   it('should list proposals by domain', async () => {
+    const schemaId = 'some-schema-id';
     await proposalRepo.create({
-      domainSchemaId: 'test-domain',
+      domainSchemaId: schemaId,
       type: 'new_category',
       description: 'Test',
       evidence: [],
@@ -225,13 +226,14 @@ describe('SchemaEvolutionService', () => {
       llmClient: createMockLlmClient(),
     });
 
-    const proposals = await service.getProposals('test-domain');
+    const proposals = await service.getProposals(schemaId);
     expect(proposals).toHaveLength(1);
   });
 
   it('should return field stats', async () => {
-    await fieldStatsRepo.incrementAsked('test-domain', 'history', 'period');
-    await fieldStatsRepo.incrementAnswered('test-domain', 'history', 'period');
+    const schemaId = 'some-schema-id';
+    await fieldStatsRepo.incrementAsked(schemaId, 'history', 'period');
+    await fieldStatsRepo.incrementAnswered(schemaId, 'history', 'period');
 
     const service = createSchemaEvolutionService({
       knowledgeRepository: knowledgeRepo,
@@ -241,7 +243,7 @@ describe('SchemaEvolutionService', () => {
       llmClient: createMockLlmClient(),
     });
 
-    const stats = await service.getFieldStats('test-domain');
+    const stats = await service.getFieldStats(schemaId);
     expect(stats).toHaveLength(1);
     expect(stats[0].answerRate).toBe(1);
   });

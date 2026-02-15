@@ -35,7 +35,7 @@ export function createSchemaEvolutionService(
     async analyze(domainSchemaId: string): Promise<readonly EvolutionProposal[]> {
       log.info({ domainSchemaId }, 'Starting schema evolution analysis');
 
-      const schema = await schemaRepository.getDomainSchemaByName(domainSchemaId);
+      const schema = await schemaRepository.getDomainSchema(domainSchemaId);
       if (!schema) {
         throw new SchemaGenerationError(`Domain schema not found: ${domainSchemaId}`);
       }
@@ -67,7 +67,7 @@ export function createSchemaEvolutionService(
           const shouldAutoApply = canAutoApply(proposal);
           if (shouldAutoApply) {
             try {
-              const currentSchema = await schemaRepository.getDomainSchemaByName(domainSchemaId);
+              const currentSchema = await schemaRepository.getDomainSchema(domainSchemaId);
               if (currentSchema) {
                 await applyProposal(proposal, currentSchema, {
                   schemaRepository,
@@ -119,7 +119,7 @@ export function createSchemaEvolutionService(
         return { proposalId, status: 'rejected' };
       }
 
-      const schema = await schemaRepository.getDomainSchemaByName(proposal.domainSchemaId);
+      const schema = await schemaRepository.getDomainSchema(proposal.domainSchemaId);
       if (!schema) {
         throw new SchemaGenerationError(
           `Domain schema not found: ${proposal.domainSchemaId}`,

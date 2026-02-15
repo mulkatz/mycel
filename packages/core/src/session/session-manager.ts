@@ -28,6 +28,7 @@ const log = createChildLogger('session:manager');
 
 export interface SessionManagerConfig {
   readonly pipelineConfig: PipelineConfig;
+  readonly domainSchemaId?: string;
   readonly sessionRepository: SessionRepository;
   readonly knowledgeRepository?: KnowledgeRepository;
   readonly embeddingClient?: EmbeddingClient;
@@ -205,6 +206,7 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
     embeddingClient: config.embeddingClient ?? config.pipelineConfig.embeddingClient,
     knowledgeRepository: config.knowledgeRepository ?? config.pipelineConfig.knowledgeRepository,
     fieldStatsRepository: config.fieldStatsRepository,
+    domainSchemaId: config.domainSchemaId,
   };
   const pipeline: Pipeline = createPipeline(pipelineConfig);
   const sessionRepo = config.sessionRepository;
@@ -213,12 +215,14 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
   const enrichmentOrchestrator = config.enrichmentOrchestrator;
   const embeddingClient = config.embeddingClient ?? config.pipelineConfig.embeddingClient;
   const domainConfig = config.pipelineConfig.domainConfig;
+  const domainSchemaId = config.domainSchemaId ?? domainConfig.name;
 
   return {
     async initSession(metadata?: SessionMetadata): Promise<InitSessionResult> {
       const session = await sessionRepo.create({
         domainConfigName: domainConfig.name,
         personaConfigName: config.pipelineConfig.personaConfig.name,
+        domainSchemaId,
         metadata,
       });
 
@@ -239,6 +243,7 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
       const session = await sessionRepo.create({
         domainConfigName: domainConfig.name,
         personaConfigName: config.pipelineConfig.personaConfig.name,
+        domainSchemaId,
         metadata,
       });
 
@@ -269,21 +274,21 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
       await persistKnowledgeEntry(
         knowledgeRepo,
         embeddingClient,
-        domainConfig.name,
+        domainSchemaId,
         result,
         session.id,
         turn.id ?? '',
         input.content,
       );
 
-      await trackFieldStats(fieldStatsRepo, domainConfig.name, result, session.id);
+      await trackFieldStats(fieldStatsRepo, domainSchemaId, result, session.id);
 
       if (enrichmentOrchestrator && entry) {
         void enrichmentOrchestrator.enrichAsync({
           userInput: input.content,
           entryId: entry.id,
           categoryId: entry.categoryId,
-          domainSchemaId: domainConfig.name,
+          domainSchemaId,
         }).catch((error: unknown) => {
           log.warn(
             { error: error instanceof Error ? error.message : String(error), sessionId: session.id },
@@ -381,7 +386,7 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
         await persistKnowledgeEntry(
           knowledgeRepo,
           embeddingClient,
-          domainConfig.name,
+          domainSchemaId,
           result,
           sessionId,
           turn.id ?? '',
@@ -389,14 +394,14 @@ export function createSessionManager(config: SessionManagerConfig): SessionManag
         );
       }
 
-      await trackFieldStats(fieldStatsRepo, domainConfig.name, result, sessionId);
+      await trackFieldStats(fieldStatsRepo, domainSchemaId, result, sessionId);
 
       if (enrichmentOrchestrator && entry) {
         void enrichmentOrchestrator.enrichAsync({
           userInput: input.content,
           entryId: entry.id,
           categoryId: entry.categoryId,
-          domainSchemaId: domainConfig.name,
+          domainSchemaId,
         }).catch((error: unknown) => {
           log.warn(
             { error: error instanceof Error ? error.message : String(error), sessionId },

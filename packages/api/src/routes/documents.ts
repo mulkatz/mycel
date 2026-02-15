@@ -133,9 +133,7 @@ export function createDocumentRoutes(): OpenAPIHono<AppEnv> {
     const { domainSchemaId } = c.req.valid('param');
     const { documentGenerator, schemaRepository } = c.get('tenantRepos');
 
-    const domainSchema =
-      (await schemaRepository.getDomainSchemaByName(domainSchemaId)) ??
-      (await schemaRepository.getDomainSchema(domainSchemaId));
+    const domainSchema = await schemaRepository.getDomainSchema(domainSchemaId);
     if (!domainSchema) {
       return c.json(
         {

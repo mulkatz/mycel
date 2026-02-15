@@ -37,7 +37,7 @@ export function createDocumentGenerator(deps: DocumentGeneratorDeps): DocumentGe
       log.info({ domainSchemaId: params.domainSchemaId }, 'Starting document generation');
 
       // 1. Load domain schema
-      const domainSchema = await schemaRepository.getDomainSchemaByName(params.domainSchemaId);
+      const domainSchema = await schemaRepository.getDomainSchema(params.domainSchemaId);
       if (!domainSchema) {
         throw new PersistenceError(`Domain schema not found: ${params.domainSchemaId}`);
       }

@@ -10,6 +10,7 @@ import type { PipelineState } from '@mycel/shared/src/types/agent.types.js';
 export interface CreateSessionInput {
   readonly domainConfigName: string;
   readonly personaConfigName: string;
+  readonly domainSchemaId?: string;
   readonly metadata?: SessionMetadata;
 }
 

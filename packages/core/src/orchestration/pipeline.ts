@@ -24,6 +24,7 @@ export interface PipelineConfig {
   readonly embeddingClient?: EmbeddingClient;
   readonly knowledgeRepository?: KnowledgeRepository;
   readonly fieldStatsRepository?: FieldStatsRepository;
+  readonly domainSchemaId?: string;
 }
 
 export interface PipelineRunOptions {
@@ -61,7 +62,7 @@ export function createPipeline(config: PipelineConfig): Pipeline {
   const contextDispatcherNode = createContextDispatcherNode({
     embeddingClient: config.embeddingClient,
     knowledgeRepository: config.knowledgeRepository,
-    domainSchemaId: config.domainConfig.name,
+    domainSchemaId: config.domainSchemaId ?? config.domainConfig.name,
   });
   const gapReasoningNode = createGapReasoningNode(config.domainConfig, config.llmClient, config.fieldStatsRepository);
   const personaNode = createPersonaNode(config.personaConfig, config.llmClient);

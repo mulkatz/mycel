@@ -128,8 +128,8 @@ function createMockLlm(): LlmClient {
   };
 }
 
-async function seedSchemaRepo(schemaRepo: SchemaRepository): Promise<void> {
-  await schemaRepo.saveDomainSchema({
+async function seedSchemaRepo(schemaRepo: SchemaRepository): Promise<{ domainId: string }> {
+  const domain = await schemaRepo.saveDomainSchema({
     name: domainConfig.name,
     version: 1,
     config: domainConfig,
@@ -141,6 +141,7 @@ async function seedSchemaRepo(schemaRepo: SchemaRepository): Promise<void> {
     config: personaConfig,
     isActive: true,
   });
+  return { domainId: domain.id };
 }
 
 function jsonPost(path: string, body: Record<string, unknown>): RequestInit {
@@ -154,10 +155,12 @@ function jsonPost(path: string, body: Record<string, unknown>): RequestInit {
 describe('API Routes', () => {
   let app: OpenAPIHono<AppEnv>;
   let schemaRepo: SchemaRepository;
+  let domainDocId: string;
 
   beforeEach(async () => {
     schemaRepo = createInMemorySchemaRepository();
-    await seedSchemaRepo(schemaRepo);
+    const { domainId } = await seedSchemaRepo(schemaRepo);
+    domainDocId = domainId;
 
     const llmClient = createMockLlm();
 
@@ -369,7 +372,7 @@ describe('API Routes', () => {
       expect(body.sessions).toHaveLength(1);
       expect(body.sessions[0]).toHaveProperty('sessionId');
       expect(body.sessions[0]).toHaveProperty('status', 'active');
-      expect(body.sessions[0]).toHaveProperty('domainSchemaId', 'test-domain');
+      expect(body.sessions[0]).toHaveProperty('domainSchemaId', domainDocId);
       expect(body.sessions[0]).toHaveProperty('personaSchemaId', 'test-persona');
       expect(body.sessions[0]).toHaveProperty('turnCount', 0);
       expect(body.sessions[0]).toHaveProperty('createdAt');

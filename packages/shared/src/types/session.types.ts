@@ -26,6 +26,7 @@ export interface Session {
   readonly id: string;
   readonly domainConfigName: string;
   readonly personaConfigName: string;
+  readonly domainSchemaId?: string;
   readonly status: SessionStatus;
   readonly turnCount: number;
   readonly turns: readonly Turn[];
