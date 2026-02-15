@@ -44,10 +44,19 @@ export function errorHandler(err: Error, c: Context<AppEnv>): Response {
   }
 
   if (err instanceof SessionError) {
-    if (err.message.includes('not found')) {
+    if (err.message.startsWith('Session not found')) {
       const body: ErrorResponse = {
         error: 'Session not found',
         code: 'SESSION_NOT_FOUND',
+        requestId,
+      };
+      return c.json(body, 404);
+    }
+
+    if (err.message.startsWith('Schema configuration not found')) {
+      const body: ErrorResponse = {
+        error: err.message,
+        code: 'SCHEMA_NOT_FOUND',
         requestId,
       };
       return c.json(body, 404);

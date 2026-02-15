@@ -108,8 +108,10 @@ export function createFirestoreSchemaRepository(base: FirestoreBase): SchemaRepo
     async saveDomainSchema(input: CreateDomainSchemaInput): Promise<PersistedDomainSchema> {
       const now = Timestamp.now();
       const behavior = input.behavior ?? resolveBehaviorPreset('manual');
+      // Use config.name as authoritative — document.name must match for lookups
+      const canonicalName = input.config.name;
       const docData: DomainSchemaDocument = {
-        name: input.name,
+        name: canonicalName,
         version: input.version,
         config: input.config as unknown as Record<string, unknown>,
         behavior: behavior as unknown as Record<string, unknown>,
@@ -126,7 +128,7 @@ export function createFirestoreSchemaRepository(base: FirestoreBase): SchemaRepo
         // Use a transaction to atomically deactivate same-name schemas and create the new one
         await db.runTransaction(async (tx) => {
           const activeSnapshot = await tx.get(
-            domainRef.where('name', '==', input.name).where('isActive', '==', true),
+            domainRef.where('name', '==', canonicalName).where('isActive', '==', true),
           );
           for (const doc of activeSnapshot.docs) {
             tx.update(doc.ref, { isActive: false, updatedAt: now });
@@ -170,8 +172,10 @@ export function createFirestoreSchemaRepository(base: FirestoreBase): SchemaRepo
 
     async savePersonaSchema(input: CreatePersonaSchemaInput): Promise<PersistedPersonaSchema> {
       const now = Timestamp.now();
+      // Use config.name as authoritative — document.name must match for lookups
+      const canonicalName = input.config.name;
       const docData: PersonaSchemaDocument = {
-        name: input.name,
+        name: canonicalName,
         description: input.description,
         version: input.version,
         config: input.config as unknown as Record<string, unknown>,

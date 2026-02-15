@@ -1,6 +1,7 @@
 import { createRoute, z } from '@hono/zod-openapi';
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import type { SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositories.js';
+import type { SchemaRepository } from '@mycel/core/src/repositories/schema.repository.js';
 import { createSessionManager } from '@mycel/core/src/session/session-manager.js';
 import { SessionError } from '@mycel/shared/src/utils/errors.js';
 import { createRouter, type AppEnv } from '../types.js';
@@ -208,6 +209,33 @@ const endSessionRoute = createRoute({
   },
 });
 
+async function resolveSessionSchemas(
+  schemaRepository: SchemaRepository,
+  session: { domainConfigName: string; personaConfigName: string },
+): Promise<{
+  domainSchema: NonNullable<Awaited<ReturnType<SchemaRepository['getDomainSchemaByName']>>>;
+  personaSchema: NonNullable<Awaited<ReturnType<SchemaRepository['getPersonaSchemaByName']>>>;
+}> {
+  const domainSchema =
+    (await schemaRepository.getDomainSchemaByName(session.domainConfigName)) ??
+    (await schemaRepository.getDomainSchema(session.domainConfigName));
+  const personaSchema =
+    (await schemaRepository.getPersonaSchemaByName(session.personaConfigName)) ??
+    (await schemaRepository.getPersonaSchema(session.personaConfigName));
+
+  if (!domainSchema || !personaSchema) {
+    const missing = [
+      ...(!domainSchema ? [`domain="${session.domainConfigName}"`] : []),
+      ...(!personaSchema ? [`persona="${session.personaConfigName}"`] : []),
+    ].join(', ');
+    throw new SessionError(
+      `Schema configuration not found for session: ${missing}`,
+    );
+  }
+
+  return { domainSchema, personaSchema };
+}
+
 export function createSessionRoutes(shared: SharedDeps): OpenAPIHono<AppEnv> {
   const sessions = createRouter();
 
@@ -296,10 +324,15 @@ export function createSessionRoutes(shared: SharedDeps): OpenAPIHono<AppEnv> {
       );
     }
 
+    // Use document-level names as authoritative — the session manager stores config.name,
+    // and turns/end handlers look up schemas by that stored name.
+    const domainConfig = { ...domainSchema.config, name: domainSchema.name };
+    const personaConfig = { ...personaSchema.config, name: personaSchema.name };
+
     const sessionManager = createSessionManager({
       pipelineConfig: {
-        domainConfig: domainSchema.config,
-        personaConfig: personaSchema.config,
+        domainConfig,
+        personaConfig,
         llmClient: shared.llmClient,
       },
       sessionRepository,
@@ -334,16 +367,7 @@ export function createSessionRoutes(shared: SharedDeps): OpenAPIHono<AppEnv> {
       throw new SessionError(`Session is already ${session.status}: ${sessionId}`);
     }
 
-    const domainSchema = await schemaRepository.getDomainSchemaByName(
-      session.domainConfigName,
-    );
-    const personaSchema = await schemaRepository.getPersonaSchemaByName(
-      session.personaConfigName,
-    );
-
-    if (!domainSchema || !personaSchema) {
-      throw new SessionError(`Schema configuration not found for session: ${sessionId}`);
-    }
+    const { domainSchema, personaSchema } = await resolveSessionSchemas(schemaRepository, session);
 
     const webSearch = domainSchema.behavior.webSearch;
     const enableEnrichment = webSearch === 'enrichment' || webSearch === 'full';
@@ -414,16 +438,7 @@ export function createSessionRoutes(shared: SharedDeps): OpenAPIHono<AppEnv> {
       throw new SessionError(`Session not found: ${sessionId}`);
     }
 
-    const domainSchema = await schemaRepository.getDomainSchemaByName(
-      session.domainConfigName,
-    );
-    const personaSchema = await schemaRepository.getPersonaSchemaByName(
-      session.personaConfigName,
-    );
-
-    if (!domainSchema || !personaSchema) {
-      throw new SessionError(`Schema configuration not found for session: ${sessionId}`);
-    }
+    const { domainSchema, personaSchema } = await resolveSessionSchemas(schemaRepository, session);
 
     const sessionManager = createSessionManager({
       pipelineConfig: {
