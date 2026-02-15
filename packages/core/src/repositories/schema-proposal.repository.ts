@@ -1,7 +1,7 @@
 import type { DomainConfig } from '@mycel/schemas/src/domain.schema.js';
 import type { DomainBehaviorConfig } from '@mycel/schemas/src/domain-behavior.schema.js';
 
-export type ProposalStatus = 'pending' | 'approved' | 'rejected';
+export type ProposalStatus = 'generating' | 'pending' | 'approved' | 'rejected' | 'failed';
 
 export interface SchemaProposal {
   readonly id: string;
@@ -14,6 +14,8 @@ export interface SchemaProposal {
   readonly sources: readonly string[];
   readonly feedback?: string;
   readonly resultingDomainSchemaId?: string;
+  readonly failureReason?: string;
+  readonly failedAt?: Date;
   readonly createdAt: Date;
   readonly reviewedAt?: Date;
 }
@@ -21,6 +23,7 @@ export interface SchemaProposal {
 export interface CreateSchemaProposalInput {
   readonly description: string;
   readonly language: string;
+  readonly status?: ProposalStatus;
   readonly proposedSchema: DomainConfig;
   readonly behavior: DomainBehaviorConfig;
   readonly reasoning: string;
@@ -32,6 +35,11 @@ export interface UpdateSchemaProposalInput {
   readonly feedback?: string;
   readonly resultingDomainSchemaId?: string;
   readonly proposedSchema?: DomainConfig;
+  readonly behavior?: DomainBehaviorConfig;
+  readonly reasoning?: string;
+  readonly sources?: readonly string[];
+  readonly failureReason?: string;
+  readonly failedAt?: Date;
 }
 
 export interface SchemaProposalRepository {

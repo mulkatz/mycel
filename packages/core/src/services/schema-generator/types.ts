@@ -29,11 +29,7 @@ export interface ReviewParams {
 
 export interface SchemaGenerationResult {
   readonly proposalId: string;
-  readonly status: 'pending';
-  readonly domain: DomainConfig;
-  readonly behavior: DomainBehaviorConfig;
-  readonly reasoning: string;
-  readonly sources: readonly string[];
+  readonly status: 'generating';
 }
 
 export interface ReviewResult {
@@ -44,6 +40,7 @@ export interface ReviewResult {
 
 export interface SchemaGenerator {
   generate(params: GenerateSchemaParams): Promise<SchemaGenerationResult>;
+  executeGeneration(proposalId: string, params: GenerateSchemaParams): Promise<void>;
   reviewProposal(proposalId: string, review: ReviewParams): Promise<ReviewResult>;
   getProposal(proposalId: string): Promise<SchemaProposal | null>;
 }

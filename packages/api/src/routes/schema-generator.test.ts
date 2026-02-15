@@ -7,6 +7,7 @@ import { createInMemorySessionRepository } from '@mycel/core/src/repositories/in
 import { createInMemoryKnowledgeRepository } from '@mycel/core/src/repositories/in-memory-knowledge.repository.js';
 import { createMockWebSearchClient } from '@mycel/core/src/services/web-search/mock-web-search-client.js';
 import { createSchemaGenerator } from '@mycel/core/src/services/schema-generator/schema-generator.js';
+import type { SchemaGenerator } from '@mycel/core/src/services/schema-generator/types.js';
 import type { TenantRepositories, SharedDeps } from '@mycel/core/src/infrastructure/tenant-repositories.js';
 import { createTestApp } from '../test-helpers.js';
 import type { AppEnv } from '../types.js';
@@ -60,8 +61,14 @@ function jsonPost(path: string, body: Record<string, unknown>): RequestInit {
   };
 }
 
+/** Flush microtask queue to let fire-and-forget promises settle */
+async function flushPromises(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe('Schema Generator API Routes', () => {
   let app: OpenAPIHono<AppEnv>;
+  let schemaGenerator: SchemaGenerator;
 
   beforeEach(() => {
     const llmClient = createMockLlm();
@@ -69,7 +76,7 @@ describe('Schema Generator API Routes', () => {
     const proposalRepo = createInMemorySchemaProposalRepository();
     const schemaRepo = createInMemorySchemaRepository();
 
-    const schemaGenerator = createSchemaGenerator({
+    schemaGenerator = createSchemaGenerator({
       llmClient,
       webSearchClient,
       proposalRepository: proposalRepo,
@@ -90,7 +97,7 @@ describe('Schema Generator API Routes', () => {
   });
 
   describe('POST /domains/generate', () => {
-    it('should generate a schema proposal', async () => {
+    it('should return 202 with generating status', async () => {
       const res = await app.request(
         '/domains/generate',
         jsonPost('/domains/generate', {
@@ -98,13 +105,12 @@ describe('Schema Generator API Routes', () => {
         }),
       );
 
-      expect(res.status).toBe(201);
+      expect(res.status).toBe(202);
       const body = (await res.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('proposalId');
-      expect(body).toHaveProperty('status', 'pending');
-      expect(body).toHaveProperty('domain');
-      expect(body).toHaveProperty('reasoning');
-      expect(body).toHaveProperty('sources');
+      expect(body).toHaveProperty('status', 'generating');
+      expect(body).not.toHaveProperty('domain');
+      expect(body).not.toHaveProperty('sources');
     });
 
     it('should accept language parameter', async () => {
@@ -116,7 +122,7 @@ describe('Schema Generator API Routes', () => {
         }),
       );
 
-      expect(res.status).toBe(201);
+      expect(res.status).toBe(202);
     });
 
     it('should accept config preset', async () => {
@@ -128,10 +134,7 @@ describe('Schema Generator API Routes', () => {
         }),
       );
 
-      expect(res.status).toBe(201);
-      const body = (await res.json()) as Record<string, unknown>;
-      const behavior = body['behavior'] as Record<string, unknown>;
-      expect(behavior['webSearch']).toBe('full');
+      expect(res.status).toBe(202);
     });
 
     it('should return 400 for description too short', async () => {
@@ -177,8 +180,8 @@ describe('Schema Generator API Routes', () => {
   });
 
   describe('POST /domains/proposals/:proposalId/review', () => {
-    it('should approve a proposal', async () => {
-      // First generate
+    it('should approve a proposal after generation completes', async () => {
+      // Generate
       const genRes = await app.request(
         '/domains/generate',
         jsonPost('/domains/generate', {
@@ -186,6 +189,9 @@ describe('Schema Generator API Routes', () => {
         }),
       );
       const genBody = (await genRes.json()) as { proposalId: string };
+
+      // Wait for background generation to complete
+      await flushPromises();
 
       // Then approve
       const reviewRes = await app.request(
@@ -210,6 +216,8 @@ describe('Schema Generator API Routes', () => {
       );
       const genBody = (await genRes.json()) as { proposalId: string };
 
+      await flushPromises();
+
       const reviewRes = await app.request(
         `/domains/proposals/${genBody.proposalId}/review`,
         jsonPost(`/domains/proposals/${genBody.proposalId}/review`, {
@@ -221,6 +229,23 @@ describe('Schema Generator API Routes', () => {
       expect(reviewRes.status).toBe(200);
       const body = (await reviewRes.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('status', 'rejected');
+    });
+
+    it('should reject reviewing a generating proposal', async () => {
+      // Use schemaGenerator directly to create a generating stub without triggering executeGeneration
+      const result = await schemaGenerator.generate({
+        description: 'A village website for Naugarten, Brandenburg',
+      });
+
+      // Proposal is in 'generating' status — try to review it via API
+      const reviewRes = await app.request(
+        `/domains/proposals/${result.proposalId}/review`,
+        jsonPost(`/domains/proposals/${result.proposalId}/review`, {
+          decision: 'approve',
+        }),
+      );
+
+      expect(reviewRes.status).toBe(400);
     });
 
     it('should return 400 for invalid decision', async () => {
@@ -236,7 +261,24 @@ describe('Schema Generator API Routes', () => {
   });
 
   describe('GET /domains/proposals/:proposalId', () => {
-    it('should return a proposal', async () => {
+    it('should return generating proposal with minimal data', async () => {
+      // Use schemaGenerator directly to create a stub without triggering executeGeneration
+      const result = await schemaGenerator.generate({
+        description: 'A village website for Naugarten, Brandenburg',
+      });
+
+      const res = await app.request(`/domains/proposals/${result.proposalId}`);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body).toHaveProperty('id', result.proposalId);
+      expect(body).toHaveProperty('status', 'generating');
+      expect(body).not.toHaveProperty('domain');
+      expect(body).not.toHaveProperty('behavior');
+      expect(body).not.toHaveProperty('reasoning');
+      expect(body).not.toHaveProperty('sources');
+    });
+
+    it('should return completed proposal with full data after generation', async () => {
       const genRes = await app.request(
         '/domains/generate',
         jsonPost('/domains/generate', {
@@ -245,11 +287,17 @@ describe('Schema Generator API Routes', () => {
       );
       const genBody = (await genRes.json()) as { proposalId: string };
 
+      await flushPromises();
+
       const res = await app.request(`/domains/proposals/${genBody.proposalId}`);
       expect(res.status).toBe(200);
       const body = (await res.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('id', genBody.proposalId);
       expect(body).toHaveProperty('status', 'pending');
+      expect(body).toHaveProperty('domain');
+      expect(body).toHaveProperty('behavior');
+      expect(body).toHaveProperty('reasoning');
+      expect(body).toHaveProperty('sources');
     });
 
     it('should return 404 for nonexistent proposal', async () => {
@@ -257,6 +305,27 @@ describe('Schema Generator API Routes', () => {
       expect(res.status).toBe(404);
       const body = (await res.json()) as Record<string, unknown>;
       expect(body).toHaveProperty('code', 'PROPOSAL_NOT_FOUND');
+    });
+  });
+
+  describe('executeGeneration failure handling', () => {
+    it('should set proposal to failed when generation errors', async () => {
+      const failingLlm: LlmClient = {
+        invoke: vi.fn().mockRejectedValue(new Error('LLM unavailable')),
+      };
+      const failingGenerator = createSchemaGenerator({
+        llmClient: failingLlm,
+        webSearchClient: createMockWebSearchClient(),
+        proposalRepository: createInMemorySchemaProposalRepository(),
+        schemaRepository: createInMemorySchemaRepository(),
+      });
+
+      const failResult = await failingGenerator.generate({ description: 'Test failing generation' });
+      await failingGenerator.executeGeneration(failResult.proposalId, { description: 'Test failing generation' });
+
+      const proposal = await failingGenerator.getProposal(failResult.proposalId);
+      expect(proposal?.status).toBe('failed');
+      expect(proposal?.failureReason).toBeDefined();
     });
   });
 });

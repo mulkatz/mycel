@@ -96,16 +96,26 @@ describe('SchemaGenerator', () => {
     });
 
     expect(result.proposalId).toBeDefined();
-    expect(result.status).toBe('pending');
-    expect(result.domain.name).toBe('village-naugarten');
-    expect(result.domain.categories.length).toBe(2);
-    expect(result.sources.length).toBeGreaterThan(0);
-    expect(result.reasoning).toContain('Naugarten');
+    expect(result.status).toBe('generating');
 
-    // Verify it was persisted
+    // Verify stub was persisted with generating status
+    const stubProposal = await proposalRepo.getProposal(result.proposalId);
+    expect(stubProposal).not.toBeNull();
+    expect(stubProposal?.status).toBe('generating');
+
+    // Execute the background generation
+    await generator.executeGeneration(result.proposalId, {
+      description: 'A village website for Naugarten, Brandenburg',
+    });
+
+    // Verify proposal was updated with full data
     const proposal = await proposalRepo.getProposal(result.proposalId);
     expect(proposal).not.toBeNull();
     expect(proposal?.status).toBe('pending');
+    expect(proposal?.proposedSchema.name).toBe('village-naugarten');
+    expect(proposal?.proposedSchema.categories.length).toBe(2);
+    expect(proposal?.sources.length).toBeGreaterThan(0);
+    expect(proposal?.reasoning).toContain('Naugarten');
   });
 
   it('should tolerate partial search failures', async () => {
@@ -138,22 +148,32 @@ describe('SchemaGenerator', () => {
       description: 'Test domain',
     });
 
-    expect(result.proposalId).toBeDefined();
+    await generator.executeGeneration(result.proposalId, {
+      description: 'Test domain',
+    });
+
+    const proposal = await proposalRepo.getProposal(result.proposalId);
+    expect(proposal?.status).toBe('pending');
     // Should succeed despite one search failure
-    expect(result.reasoning).toContain('2/3');
+    expect(proposal?.reasoning).toContain('2/3');
   });
 
-  it('should throw when all searches fail', async () => {
+  it('should set proposal to failed when all searches fail', async () => {
+    const proposalRepo = createInMemorySchemaProposalRepository();
+
     const generator = createSchemaGenerator({
       llmClient: createMockLlm(),
       webSearchClient: createFailingWebSearch(),
-      proposalRepository: createInMemorySchemaProposalRepository(),
+      proposalRepository: proposalRepo,
       schemaRepository: createInMemorySchemaRepository(),
     });
 
-    await expect(
-      generator.generate({ description: 'Test domain' }),
-    ).rejects.toThrow('All web searches failed');
+    const result = await generator.generate({ description: 'Test domain' });
+    await generator.executeGeneration(result.proposalId, { description: 'Test domain' });
+
+    const proposal = await proposalRepo.getProposal(result.proposalId);
+    expect(proposal?.status).toBe('failed');
+    expect(proposal?.failureReason).toContain('All web searches failed');
   });
 
   it('should use balanced preset by default', async () => {
@@ -170,14 +190,21 @@ describe('SchemaGenerator', () => {
       description: 'Test domain',
     });
 
-    expect(result.behavior).toEqual(resolveBehaviorPreset('balanced'));
+    await generator.executeGeneration(result.proposalId, {
+      description: 'Test domain',
+    });
+
+    const proposal = await proposalRepo.getProposal(result.proposalId);
+    expect(proposal?.behavior).toEqual(resolveBehaviorPreset('balanced'));
   });
 
   it('should resolve preset name to behavior config', async () => {
+    const proposalRepo = createInMemorySchemaProposalRepository();
+
     const generator = createSchemaGenerator({
       llmClient: createMockLlm(),
       webSearchClient: createMockWebSearch(),
-      proposalRepository: createInMemorySchemaProposalRepository(),
+      proposalRepository: proposalRepo,
       schemaRepository: createInMemorySchemaRepository(),
     });
 
@@ -186,10 +213,17 @@ describe('SchemaGenerator', () => {
       config: 'full_auto',
     });
 
-    expect(result.behavior).toEqual(resolveBehaviorPreset('full_auto'));
+    await generator.executeGeneration(result.proposalId, {
+      description: 'Test domain',
+      config: 'full_auto',
+    });
+
+    const proposal = await proposalRepo.getProposal(result.proposalId);
+    expect(proposal?.behavior).toEqual(resolveBehaviorPreset('full_auto'));
   });
 
   it('should accept a full behavior config object', async () => {
+    const proposalRepo = createInMemorySchemaProposalRepository();
     const customBehavior = {
       ...resolveBehaviorPreset('balanced'),
       documentGeneration: 'on_session_end' as const,
@@ -198,7 +232,7 @@ describe('SchemaGenerator', () => {
     const generator = createSchemaGenerator({
       llmClient: createMockLlm(),
       webSearchClient: createMockWebSearch(),
-      proposalRepository: createInMemorySchemaProposalRepository(),
+      proposalRepository: proposalRepo,
       schemaRepository: createInMemorySchemaRepository(),
     });
 
@@ -207,7 +241,35 @@ describe('SchemaGenerator', () => {
       config: customBehavior,
     });
 
-    expect(result.behavior.documentGeneration).toBe('on_session_end');
+    await generator.executeGeneration(result.proposalId, {
+      description: 'Test domain',
+      config: customBehavior,
+    });
+
+    const proposal = await proposalRepo.getProposal(result.proposalId);
+    expect(proposal?.behavior.documentGeneration).toBe('on_session_end');
+  });
+
+  it('should set proposal to failed when LLM errors', async () => {
+    const proposalRepo = createInMemorySchemaProposalRepository();
+    const failingLlm: LlmClient = {
+      invoke: vi.fn().mockRejectedValue(new Error('LLM unavailable')),
+    };
+
+    const generator = createSchemaGenerator({
+      llmClient: failingLlm,
+      webSearchClient: createMockWebSearch(),
+      proposalRepository: proposalRepo,
+      schemaRepository: createInMemorySchemaRepository(),
+    });
+
+    const result = await generator.generate({ description: 'Test domain' });
+    await generator.executeGeneration(result.proposalId, { description: 'Test domain' });
+
+    const proposal = await proposalRepo.getProposal(result.proposalId);
+    expect(proposal?.status).toBe('failed');
+    expect(proposal?.failureReason).toBe('LLM unavailable');
+    expect(proposal?.failedAt).toBeDefined();
   });
 });
 
@@ -224,6 +286,7 @@ describe('SchemaGenerator review flow', () => {
     });
 
     const generated = await generator.generate({ description: 'Test domain' });
+    await generator.executeGeneration(generated.proposalId, { description: 'Test domain' });
 
     const result = await generator.reviewProposal(generated.proposalId, {
       decision: 'approve',
@@ -259,6 +322,7 @@ describe('SchemaGenerator review flow', () => {
     });
 
     const generated = await generator.generate({ description: 'Test domain' });
+    await generator.executeGeneration(generated.proposalId, { description: 'Test domain' });
 
     const result = await generator.reviewProposal(generated.proposalId, {
       decision: 'approve_with_changes',
@@ -286,6 +350,7 @@ describe('SchemaGenerator review flow', () => {
     });
 
     const generated = await generator.generate({ description: 'Test domain' });
+    await generator.executeGeneration(generated.proposalId, { description: 'Test domain' });
 
     const result = await generator.reviewProposal(generated.proposalId, {
       decision: 'reject',
@@ -313,6 +378,45 @@ describe('SchemaGenerator review flow', () => {
     ).rejects.toThrow('Proposal not found');
   });
 
+  it('should throw when reviewing a generating proposal', async () => {
+    const proposalRepo = createInMemorySchemaProposalRepository();
+
+    const generator = createSchemaGenerator({
+      llmClient: createMockLlm(),
+      webSearchClient: createMockWebSearch(),
+      proposalRepository: proposalRepo,
+      schemaRepository: createInMemorySchemaRepository(),
+    });
+
+    const generated = await generator.generate({ description: 'Test domain' });
+    // Don't call executeGeneration — proposal is still 'generating'
+
+    await expect(
+      generator.reviewProposal(generated.proposalId, { decision: 'approve' }),
+    ).rejects.toThrow('still generating');
+  });
+
+  it('should throw when reviewing a failed proposal', async () => {
+    const proposalRepo = createInMemorySchemaProposalRepository();
+    const failingLlm: LlmClient = {
+      invoke: vi.fn().mockRejectedValue(new Error('LLM error')),
+    };
+
+    const generator = createSchemaGenerator({
+      llmClient: failingLlm,
+      webSearchClient: createMockWebSearch(),
+      proposalRepository: proposalRepo,
+      schemaRepository: createInMemorySchemaRepository(),
+    });
+
+    const generated = await generator.generate({ description: 'Test domain' });
+    await generator.executeGeneration(generated.proposalId, { description: 'Test domain' });
+
+    await expect(
+      generator.reviewProposal(generated.proposalId, { decision: 'approve' }),
+    ).rejects.toThrow('failed and cannot be reviewed');
+  });
+
   it('should throw when reviewing already-reviewed proposal', async () => {
     const proposalRepo = createInMemorySchemaProposalRepository();
 
@@ -324,6 +428,7 @@ describe('SchemaGenerator review flow', () => {
     });
 
     const generated = await generator.generate({ description: 'Test domain' });
+    await generator.executeGeneration(generated.proposalId, { description: 'Test domain' });
 
     await generator.reviewProposal(generated.proposalId, { decision: 'reject' });
 
@@ -343,6 +448,7 @@ describe('SchemaGenerator review flow', () => {
     });
 
     const generated = await generator.generate({ description: 'Test domain' });
+    await generator.executeGeneration(generated.proposalId, { description: 'Test domain' });
 
     await expect(
       generator.reviewProposal(generated.proposalId, {

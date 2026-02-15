@@ -173,16 +173,7 @@ export const CategorySchema = z.object({
 export const SchemaGenerateResponseSchema = z
   .object({
     proposalId: z.string(),
-    status: z.string(),
-    domain: z.object({
-      name: z.string(),
-      version: z.string(),
-      description: z.string(),
-      categories: z.array(CategorySchema),
-    }),
-    behavior: z.record(z.unknown()).optional(),
-    reasoning: z.string(),
-    sources: z.array(z.string()).optional(),
+    status: z.literal('generating'),
   })
   .openapi('SchemaGenerateResponse');
 
@@ -209,6 +200,8 @@ export const SchemaProposalResponseSchema = z
     behavior: z.record(z.unknown()).optional(),
     reasoning: z.string().optional(),
     sources: z.array(z.string()).optional(),
+    failureReason: z.string().optional(),
+    failedAt: z.string().optional(),
     createdAt: z.string().optional(),
   })
   .openapi('SchemaProposalResponse');

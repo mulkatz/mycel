@@ -185,10 +185,10 @@ RESPONSE=$(request POST /domains/generate '{
 STATUS=$(get_status "$RESPONSE")
 BODY=$(get_body "$RESPONSE")
 
-if [ "$STATUS" = "200" ] || [ "$STATUS" = "201" ]; then
-  pass "Schema generation endpoint returned $STATUS"
+if [ "$STATUS" = "202" ]; then
+  pass "Schema generation initiated (202 Accepted)"
 else
-  fail "Schema generation returned $STATUS"
+  fail "Schema generation returned $STATUS (expected 202)"
   echo "  Response: $BODY"
 fi
 
@@ -202,31 +202,58 @@ else
   echo "  Response: $BODY"
 fi
 
-# Extract domain name (used by all subsequent endpoints that do name-based lookup)
-DOMAIN_NAME=$(echo "$BODY" | jq -r '.domain.name // empty' 2>/dev/null || echo "")
-if [ -n "$DOMAIN_NAME" ]; then
-  pass "Domain name: $DOMAIN_NAME"
-else
-  warn "No domain name in response"
-fi
+# Poll for generation completion (generating → pending)
+DOMAIN_NAME=""
+if [ -n "$PROPOSAL_ID" ]; then
+  info "Polling for generation completion..."
+  MAX_POLLS=60
+  POLL_INTERVAL=3
+  POLL_COUNT=0
+  PROPOSAL_STATUS="generating"
 
-# Check that categories were generated
-CATEGORY_COUNT=$(echo "$BODY" | jq '.domain.categories | length' 2>/dev/null || echo "0")
+  while [ "$PROPOSAL_STATUS" = "generating" ] && [ "$POLL_COUNT" -lt "$MAX_POLLS" ]; do
+    sleep "$POLL_INTERVAL"
+    POLL_COUNT=$((POLL_COUNT + 1))
+    RESPONSE=$(request GET "/domains/proposals/$PROPOSAL_ID")
+    STATUS=$(get_status "$RESPONSE")
+    BODY=$(get_body "$RESPONSE")
+    PROPOSAL_STATUS=$(echo "$BODY" | jq -r '.status // empty' 2>/dev/null || echo "")
+    info "  Poll $POLL_COUNT/$MAX_POLLS: status=$PROPOSAL_STATUS"
+  done
 
-if [ "$CATEGORY_COUNT" -gt 0 ]; then
-  pass "Schema has $CATEGORY_COUNT categories"
-  info "Categories: $(echo "$BODY" | jq -r '.domain.categories[].id' 2>/dev/null | tr '\n' ', ')"
-else
-  fail "No categories generated"
-fi
+  if [ "$PROPOSAL_STATUS" = "pending" ]; then
+    pass "Schema generation completed after $POLL_COUNT polls"
 
-# Check for sources
-SOURCE_COUNT=$(echo "$BODY" | jq '.sources | length' 2>/dev/null || echo "0")
+    # Extract domain name from proposal response
+    DOMAIN_NAME=$(echo "$BODY" | jq -r '.domain.name // empty' 2>/dev/null || echo "")
+    if [ -n "$DOMAIN_NAME" ]; then
+      pass "Domain name: $DOMAIN_NAME"
+    else
+      warn "No domain name in proposal response"
+    fi
 
-if [ "$SOURCE_COUNT" -gt 0 ]; then
-  pass "Schema includes $SOURCE_COUNT web sources"
-else
-  warn "No web sources in response (Gemini grounding may not have returned URLs)"
+    # Check that categories were generated
+    CATEGORY_COUNT=$(echo "$BODY" | jq '.domain.categories | length' 2>/dev/null || echo "0")
+    if [ "$CATEGORY_COUNT" -gt 0 ]; then
+      pass "Schema has $CATEGORY_COUNT categories"
+      info "Categories: $(echo "$BODY" | jq -r '.domain.categories[].id' 2>/dev/null | tr '\n' ', ')"
+    else
+      fail "No categories generated"
+    fi
+
+    # Check for sources
+    SOURCE_COUNT=$(echo "$BODY" | jq '.sources | length' 2>/dev/null || echo "0")
+    if [ "$SOURCE_COUNT" -gt 0 ]; then
+      pass "Schema includes $SOURCE_COUNT web sources"
+    else
+      warn "No web sources in proposal (Gemini grounding may not have returned URLs)"
+    fi
+  elif [ "$PROPOSAL_STATUS" = "failed" ]; then
+    FAILURE_REASON=$(echo "$BODY" | jq -r '.failureReason // "unknown"' 2>/dev/null || echo "unknown")
+    fail "Schema generation failed: $FAILURE_REASON"
+  else
+    fail "Schema generation timed out after $((MAX_POLLS * POLL_INTERVAL))s (status: $PROPOSAL_STATUS)"
+  fi
 fi
 
 # Approve the proposal

@@ -41,78 +41,108 @@ export function createSchemaGenerator(deps: SchemaGeneratorDeps): SchemaGenerato
 
   return {
     async generate(params: GenerateSchemaParams): Promise<SchemaGenerationResult> {
-      log.info({ descriptionLength: params.description.length }, 'Starting schema generation');
+      log.info({ descriptionLength: params.description.length }, 'Initiating schema generation');
 
-      // 1. Analyze domain description
-      const analysis = await analyzeDomain(params.description, llmClient, params.language);
+      const placeholderBehavior = resolveBehavior(params.config);
 
-      // 2. Execute web searches sequentially (tolerant of individual failures)
-      const searchResults: WebSearchResult[] = [];
-      const systemContext = `You are researching the topic "${analysis.subject}" (${analysis.domainType}) to help create a knowledge management schema.`;
-
-      for (const query of analysis.searchQueries) {
-        try {
-          const result = await webSearchClient.search(query, systemContext);
-          searchResults.push(result);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          log.warn({ query, error: message }, 'Web search failed for query, continuing');
-        }
-      }
-
-      if (searchResults.length === 0) {
-        throw new SchemaGenerationError(
-          'All web searches failed. Cannot generate schema without research data.',
-        );
-      }
-
-      log.info(
-        { successfulSearches: searchResults.length, totalQueries: analysis.searchQueries.length },
-        'Web searches completed',
-      );
-
-      // 3. Synthesize schema
-      const proposedSchema = await synthesizeSchema(
-        analysis,
-        searchResults,
-        llmClient,
-        params.partialSchema,
-      );
-
-      // 4. Resolve behavior config
-      const behavior = resolveBehavior(params.config);
-
-      // 5. Collect all source URLs
-      const allSources = [...new Set(searchResults.flatMap((r) => [...r.sourceUrls]))];
-
-      // 6. Build reasoning summary
-      const reasoning = `Analyzed domain "${analysis.subject}" (${analysis.domainType})${analysis.location ? ` in ${analysis.location}` : ''}. ` +
-        `Executed ${String(searchResults.length)}/${String(analysis.searchQueries.length)} web searches successfully. ` +
-        `Generated ${String(proposedSchema.categories.length)} categories covering the domain.`;
-
-      // 7. Store as proposal
       const proposal = await proposalRepository.saveProposal({
         description: params.description,
-        language: analysis.language,
-        proposedSchema,
-        behavior,
-        reasoning,
-        sources: allSources,
+        language: params.language ?? 'en',
+        status: 'generating',
+        proposedSchema: {
+          name: 'generating',
+          version: '0.0.0',
+          description: params.description,
+          categories: [{ id: 'placeholder', label: 'Placeholder', description: 'Generating...' }],
+          ingestion: { allowedModalities: ['text'], primaryLanguage: params.language ?? 'en', supportedLanguages: [params.language ?? 'en'] },
+        },
+        behavior: placeholderBehavior,
+        reasoning: '',
+        sources: [],
       });
 
-      log.info(
-        { proposalId: proposal.id, categoryCount: proposedSchema.categories.length },
-        'Schema proposal created',
-      );
+      log.info({ proposalId: proposal.id }, 'Generating proposal stub created');
 
       return {
         proposalId: proposal.id,
-        status: 'pending',
-        domain: proposedSchema,
-        behavior,
-        reasoning,
-        sources: allSources,
+        status: 'generating',
       };
+    },
+
+    async executeGeneration(proposalId: string, params: GenerateSchemaParams): Promise<void> {
+      log.info({ proposalId, descriptionLength: params.description.length }, 'Executing schema generation');
+
+      try {
+        // 1. Analyze domain description
+        const analysis = await analyzeDomain(params.description, llmClient, params.language);
+
+        // 2. Execute web searches sequentially (tolerant of individual failures)
+        const searchResults: WebSearchResult[] = [];
+        const systemContext = `You are researching the topic "${analysis.subject}" (${analysis.domainType}) to help create a knowledge management schema.`;
+
+        for (const query of analysis.searchQueries) {
+          try {
+            const result = await webSearchClient.search(query, systemContext);
+            searchResults.push(result);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            log.warn({ query, error: message }, 'Web search failed for query, continuing');
+          }
+        }
+
+        if (searchResults.length === 0) {
+          throw new SchemaGenerationError(
+            'All web searches failed. Cannot generate schema without research data.',
+          );
+        }
+
+        log.info(
+          { successfulSearches: searchResults.length, totalQueries: analysis.searchQueries.length },
+          'Web searches completed',
+        );
+
+        // 3. Synthesize schema
+        const proposedSchema = await synthesizeSchema(
+          analysis,
+          searchResults,
+          llmClient,
+          params.partialSchema,
+        );
+
+        // 4. Resolve behavior config
+        const behavior = resolveBehavior(params.config);
+
+        // 5. Collect all source URLs
+        const allSources = [...new Set(searchResults.flatMap((r) => [...r.sourceUrls]))];
+
+        // 6. Build reasoning summary
+        const reasoning = `Analyzed domain "${analysis.subject}" (${analysis.domainType})${analysis.location ? ` in ${analysis.location}` : ''}. ` +
+          `Executed ${String(searchResults.length)}/${String(analysis.searchQueries.length)} web searches successfully. ` +
+          `Generated ${String(proposedSchema.categories.length)} categories covering the domain.`;
+
+        // 7. Update proposal with results
+        await proposalRepository.updateProposal(proposalId, {
+          status: 'pending',
+          proposedSchema,
+          behavior,
+          reasoning,
+          sources: allSources,
+        });
+
+        log.info(
+          { proposalId, categoryCount: proposedSchema.categories.length },
+          'Schema generation completed',
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        log.error({ proposalId, error: message }, 'Schema generation failed');
+
+        await proposalRepository.updateProposal(proposalId, {
+          status: 'failed',
+          failureReason: message,
+          failedAt: new Date(),
+        });
+      }
     },
 
     async reviewProposal(proposalId: string, review: ReviewParams): Promise<ReviewResult> {
@@ -123,6 +153,12 @@ export function createSchemaGenerator(deps: SchemaGeneratorDeps): SchemaGenerato
         throw new SchemaGenerationError(`Proposal not found: ${proposalId}`);
       }
 
+      if (proposal.status === 'generating') {
+        throw new SchemaGenerationError('Proposal is still generating. Please wait.');
+      }
+      if (proposal.status === 'failed') {
+        throw new SchemaGenerationError('Proposal generation failed and cannot be reviewed.');
+      }
       if (proposal.status !== 'pending') {
         throw new SchemaGenerationError(
           `Proposal ${proposalId} has already been reviewed (status: ${proposal.status})`,

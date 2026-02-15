@@ -22,6 +22,8 @@ interface ProposalDocument {
   sources: string[];
   feedback?: string;
   resultingDomainSchemaId?: string;
+  failureReason?: string;
+  failedAt?: Timestamp;
   createdAt: Timestamp;
   reviewedAt?: Timestamp;
 }
@@ -38,6 +40,8 @@ function proposalFromDoc(id: string, data: ProposalDocument): SchemaProposal {
     sources: data.sources,
     feedback: data.feedback,
     resultingDomainSchemaId: data.resultingDomainSchemaId,
+    failureReason: data.failureReason,
+    failedAt: data.failedAt?.toDate(),
     createdAt: data.createdAt.toDate(),
     reviewedAt: data.reviewedAt?.toDate(),
   };
@@ -61,7 +65,7 @@ export function createFirestoreSchemaProposalRepository(base: FirestoreBase): Sc
       const docData: ProposalDocument = {
         description: input.description,
         language: input.language,
-        status: 'pending',
+        status: input.status ?? 'pending',
         proposedSchema: input.proposedSchema as unknown as Record<string, unknown>,
         behavior: input.behavior as unknown as Record<string, unknown>,
         reasoning: input.reasoning,
@@ -85,7 +89,9 @@ export function createFirestoreSchemaProposalRepository(base: FirestoreBase): Sc
 
       if (input.status !== undefined) {
         updates['status'] = input.status;
-        updates['reviewedAt'] = Timestamp.now();
+        if (input.status === 'approved' || input.status === 'rejected') {
+          updates['reviewedAt'] = Timestamp.now();
+        }
       }
       if (input.feedback !== undefined) {
         updates['feedback'] = input.feedback;
@@ -95,6 +101,21 @@ export function createFirestoreSchemaProposalRepository(base: FirestoreBase): Sc
       }
       if (input.proposedSchema !== undefined) {
         updates['proposedSchema'] = input.proposedSchema as unknown as Record<string, unknown>;
+      }
+      if (input.behavior !== undefined) {
+        updates['behavior'] = input.behavior as unknown as Record<string, unknown>;
+      }
+      if (input.reasoning !== undefined) {
+        updates['reasoning'] = input.reasoning;
+      }
+      if (input.sources !== undefined) {
+        updates['sources'] = [...input.sources];
+      }
+      if (input.failureReason !== undefined) {
+        updates['failureReason'] = input.failureReason;
+      }
+      if (input.failedAt !== undefined) {
+        updates['failedAt'] = Timestamp.fromDate(input.failedAt);
       }
 
       await collectionRef.doc(id).update(updates);

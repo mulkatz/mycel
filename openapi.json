@@ -452,90 +452,15 @@
             "type": "string"
           },
           "status": {
-            "type": "string"
-          },
-          "domain": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "version": {
-                "type": "string"
-              },
-              "description": {
-                "type": "string"
-              },
-              "categories": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "label": {
-                      "type": "string"
-                    },
-                    "description": {
-                      "type": "string"
-                    },
-                    "requiredFields": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "optionalFields": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "origin": {
-                      "type": "string"
-                    },
-                    "sourceUrls": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "label",
-                    "description"
-                  ]
-                }
-              }
-            },
-            "required": [
-              "name",
-              "version",
-              "description",
-              "categories"
+            "type": "string",
+            "enum": [
+              "generating"
             ]
-          },
-          "behavior": {
-            "type": "object",
-            "additionalProperties": {}
-          },
-          "reasoning": {
-            "type": "string"
-          },
-          "sources": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           }
         },
         "required": [
           "proposalId",
-          "status",
-          "domain",
-          "reasoning"
+          "status"
         ]
       },
       "GenerateSchemaRequest": {
@@ -838,6 +763,12 @@
             "items": {
               "type": "string"
             }
+          },
+          "failureReason": {
+            "type": "string"
+          },
+          "failedAt": {
+            "type": "string"
           },
           "createdAt": {
             "type": "string"
@@ -2215,8 +2146,8 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Schema proposal generated",
+          "202": {
+            "description": "Schema generation initiated",
             "content": {
               "application/json": {
                 "schema": {

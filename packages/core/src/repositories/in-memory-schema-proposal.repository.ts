@@ -21,7 +21,7 @@ export function createInMemorySchemaProposalRepository(): SchemaProposalReposito
         id: randomUUID(),
         description: input.description,
         language: input.language,
-        status: 'pending',
+        status: input.status ?? 'pending',
         proposedSchema: input.proposedSchema,
         behavior: input.behavior,
         reasoning: input.reasoning,
@@ -44,7 +44,12 @@ export function createInMemorySchemaProposalRepository(): SchemaProposalReposito
         feedback: input.feedback ?? existing.feedback,
         resultingDomainSchemaId: input.resultingDomainSchemaId ?? existing.resultingDomainSchemaId,
         proposedSchema: input.proposedSchema ?? existing.proposedSchema,
-        reviewedAt: input.status ? new Date() : existing.reviewedAt,
+        behavior: input.behavior ?? existing.behavior,
+        reasoning: input.reasoning ?? existing.reasoning,
+        sources: input.sources ?? existing.sources,
+        failureReason: input.failureReason ?? existing.failureReason,
+        failedAt: input.failedAt ?? existing.failedAt,
+        reviewedAt: (input.status === 'approved' || input.status === 'rejected') ? new Date() : existing.reviewedAt,
       };
       proposals.set(id, updated);
       return Promise.resolve(updated);

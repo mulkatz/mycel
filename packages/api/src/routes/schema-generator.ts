@@ -1,6 +1,7 @@
 import { createRoute, z } from '@hono/zod-openapi';
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { DomainBehaviorConfigSchema } from '@mycel/schemas/src/domain-behavior.schema.js';
+import { createChildLogger } from '@mycel/shared/src/logger.js';
 import { createRouter, type AppEnv } from '../types.js';
 import {
   ErrorResponseSchema,
@@ -79,8 +80,8 @@ const generateSchemaRoute = createRoute({
     },
   },
   responses: {
-    201: {
-      description: 'Schema proposal generated',
+    202: {
+      description: 'Schema generation initiated',
       content: {
         'application/json': {
           schema: SchemaGenerateResponseSchema,
@@ -166,32 +167,34 @@ const getProposalRoute = createRoute({
 });
 
 export function createSchemaGeneratorRoutes(): OpenAPIHono<AppEnv> {
+  const log = createChildLogger('schema-generator-routes');
   const routes = createRouter();
 
   routes.openapi(generateSchemaRoute, async (c) => {
     const input = c.req.valid('json');
     const { schemaGenerator } = c.get('tenantRepos');
 
-    const result = await schemaGenerator.generate({
+    const generateParams = {
       description: input.description,
       language: input.language,
       config: input.config,
       partialSchema: input.partialSchema,
+    };
+
+    const result = await schemaGenerator.generate(generateParams);
+
+    // Fire and forget background generation
+    void schemaGenerator.executeGeneration(result.proposalId, generateParams).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      log.error({ proposalId: result.proposalId, error: message }, 'Background generation failed unexpectedly');
     });
 
     return c.json(
       {
         proposalId: result.proposalId,
         status: result.status,
-        domain: {
-          ...result.domain,
-          categories: result.domain.categories.map((cat) => ({ ...cat })),
-        },
-        behavior: result.behavior,
-        reasoning: result.reasoning,
-        sources: [...result.sources],
       },
-      201,
+      202,
     );
   });
 
@@ -232,18 +235,30 @@ export function createSchemaGeneratorRoutes(): OpenAPIHono<AppEnv> {
       );
     }
 
+    const hasFullData = proposal.status === 'pending' || proposal.status === 'approved' || proposal.status === 'rejected';
+
     return c.json(
       {
         id: proposal.id,
         status: proposal.status,
-        domain: {
-          ...proposal.proposedSchema,
-          categories: proposal.proposedSchema.categories.map((cat) => ({ ...cat })),
-        },
-        behavior: proposal.behavior,
-        reasoning: proposal.reasoning,
-        sources: [...proposal.sources],
         createdAt: proposal.createdAt.toISOString(),
+        ...(hasFullData
+          ? {
+              domain: {
+                ...proposal.proposedSchema,
+                categories: proposal.proposedSchema.categories.map((cat) => ({ ...cat })),
+              },
+              behavior: proposal.behavior,
+              reasoning: proposal.reasoning,
+              sources: [...proposal.sources],
+            }
+          : {}),
+        ...(proposal.status === 'failed'
+          ? {
+              failureReason: proposal.failureReason,
+              failedAt: proposal.failedAt?.toISOString(),
+            }
+          : {}),
       },
       200,
     );

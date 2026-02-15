@@ -20,7 +20,8 @@ echo "Deploying to Cloud Run..."
 gcloud run services update mycel-api \
   --region="$REGION" \
   --image="$IMAGE:$TAG" \
-  --project="$PROJECT_ID"
+  --project="$PROJECT_ID" \
+  --no-cpu-throttling
 
 echo ""
 echo "Done. Service URL:"
