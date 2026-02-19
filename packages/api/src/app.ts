@@ -23,12 +23,21 @@ export interface AppConfig {
   readonly db: Firestore;
   readonly projectId: string;
   readonly sharedDeps: SharedDeps;
+  readonly corsOrigins?: readonly string[];
 }
 
 export function createApp(config: AppConfig): OpenAPIHono<AppEnv> {
   const app = createRouter();
 
-  app.use('*', cors());
+  app.use(
+    '*',
+    cors({
+      origin: config.corsOrigins ? [...config.corsOrigins] : [],
+      allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+      credentials: true,
+    }),
+  );
   app.use('*', requestId);
 
   // Request logging

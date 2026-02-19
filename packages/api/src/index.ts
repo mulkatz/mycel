@@ -33,9 +33,14 @@ async function main(): Promise<void> {
 
   const searchCacheRepository = createFirestoreSearchCacheRepository(db);
 
+  const corsOrigins = process.env['MYCEL_CORS_ORIGINS']
+    ? process.env['MYCEL_CORS_ORIGINS'].split(',').map((o) => o.trim())
+    : [];
+
   const app = createApp({
     db,
     projectId,
+    corsOrigins,
     sharedDeps: {
       llmClient,
       textLlmClient,

@@ -3,7 +3,7 @@
 ## Project Overview
 Mycel is an AI-powered Universal Knowledge Engine (UKE) that captures decentralized,
 unstructured knowledge through multimodal dialogues and structures it using a
-multi-agent system. The project is closed-source and proprietary.
+multi-agent system. The project is open-source under the MIT license.
 
 ## Tech Stack
 - TypeScript (strict mode) for all code

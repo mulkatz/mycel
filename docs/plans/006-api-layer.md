@@ -379,8 +379,8 @@ npm run test             # All tests pass (existing + new)
 
 # Smoke test with emulator:
 npm run emulator:start
-FIRESTORE_EMULATOR_HOST=localhost:8080 MYCEL_GCP_PROJECT_ID=mycel-dev-1348 npx tsx scripts/seed-schemas.ts
-FIRESTORE_EMULATOR_HOST=localhost:8080 MYCEL_GCP_PROJECT_ID=mycel-dev-1348 npm run dev -w packages/api
+FIRESTORE_EMULATOR_HOST=localhost:8080 MYCEL_GCP_PROJECT_ID=<your-project-id> npx tsx scripts/seed-schemas.ts
+FIRESTORE_EMULATOR_HOST=localhost:8080 MYCEL_GCP_PROJECT_ID=<your-project-id> npm run dev -w packages/api
 
 curl http://localhost:3000/health
 curl -X POST http://localhost:3000/sessions -H "Content-Type: application/json" \

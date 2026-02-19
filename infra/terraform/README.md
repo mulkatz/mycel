@@ -33,12 +33,12 @@ The Terraform state bucket must be created manually before first use:
 
 ```bash
 # Create the state bucket
-gcloud storage buckets create gs://mycel-terraform-state-1348 \
+gcloud storage buckets create gs://<your-project-id>-terraform-state \
   --location=europe-west3 \
   --uniform-bucket-level-access
 
 # Enable versioning for state protection
-gcloud storage buckets update gs://mycel-terraform-state-1348 \
+gcloud storage buckets update gs://<your-project-id>-terraform-state \
   --versioning
 ```
 
@@ -49,7 +49,7 @@ gcloud storage buckets update gs://mycel-terraform-state-1348 \
 ```bash
 cd infra/terraform/environments/dev
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars if needed (defaults match mycel-dev-1348)
+# Edit terraform.tfvars if needed (defaults match <your-project-id>)
 ```
 
 ### 2. Initialize
@@ -108,7 +108,7 @@ terraform state list
 
 ## Environments
 
-- **dev** (`mycel-dev-1348`): Development environment, currently the only active config.
+- **dev** (`<your-project-id>`): Development environment, currently the only active config.
 
 To add staging/prod: create a new directory under `environments/` following the same pattern as `dev/`.
 

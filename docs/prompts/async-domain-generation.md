@@ -24,7 +24,7 @@ Convert domain generation from a synchronous request/response to an async job pa
 
 ## Current Implementation (key files)
 
-**Backend (monorepo at `/Users/franz/Workspace/mycel`):**
+**Backend (this repository):**
 
 - `packages/api/src/routes/schema-generator.ts` — route handlers for generate, review, get proposal
 - `packages/api/src/schemas/responses.ts` — Zod response schemas (SchemaGenerateResponseSchema, SchemaProposalResponseSchema)
@@ -33,7 +33,7 @@ Convert domain generation from a synchronous request/response to an async job pa
 - `packages/core/src/repositories/in-memory-schema-proposal.repository.ts` — in-memory impl for tests
 - `packages/core/src/infrastructure/firestore-schema-proposal.repository.ts` — Firestore impl
 
-**Frontend (separate repo at `/Users/franz/Workspace/mycel-web`):**
+**Frontend (separate repository: mycel-web):**
 
 - `apps/admin/src/routes/domain-generate.tsx` — generate page with form submission and toast handling
 - `apps/admin/src/routes/proposal-review.tsx` — proposal review page
@@ -46,6 +46,6 @@ Trim the Vertex AI grounding redirect URLs from the `POST /domains/generate` res
 
 ## Additional Context
 
-- Deploy script: `MYCEL_GCP_PROJECT_ID=mycel-dev-1348 scripts/deploy.sh`
-- Cloud Run service URL: `https://mycel-api-xd2kik7xbq-ey.a.run.app`
+- Deploy script: `MYCEL_GCP_PROJECT_ID=<your-project-id> scripts/deploy.sh`
+- Cloud Run service URL: See your Cloud Run deployment output
 - Docker daemon is OrbStack (`open -a OrbStack` to start before deploying)

@@ -18,7 +18,7 @@ Everything is already built — this task connects the pieces.
 - **IAM**: Service account `mycel-api` exists with `roles/datastore.user` and
   `roles/logging.logWriter`. **Missing: `roles/aiplatform.user`** for Vertex AI.
 - **Artifact Registry**: Repository exists at
-  `europe-west3-docker.pkg.dev/mycel-dev-1348/mycel`, currently empty.
+  `europe-west3-docker.pkg.dev/<your-project-id>/mycel`, currently empty.
 - **No `.dockerignore`** file exists.
 - **No deploy script** exists.
 - **No public access policy** for Cloud Run (needed for dev/testing without auth).
@@ -48,7 +48,7 @@ Build and test locally:
 
 ```bash
 docker build -f packages/api/Dockerfile -t mycel-api .
-docker run -p 3000:8080 -e PORT=8080 -e MYCEL_GCP_PROJECT_ID=mycel-dev-1348 -e MYCEL_MOCK_LLM=true mycel-api
+docker run -p 3000:8080 -e PORT=8080 -e MYCEL_GCP_PROJECT_ID=<your-project-id> -e MYCEL_MOCK_LLM=true mycel-api
 curl http://localhost:3000/health
 ```
 
@@ -126,8 +126,8 @@ Manual steps (will be automated in Step 8):
 
 ```bash
 gcloud auth configure-docker europe-west3-docker.pkg.dev
-docker build -f packages/api/Dockerfile -t europe-west3-docker.pkg.dev/mycel-dev-1348/mycel/api:latest .
-docker push europe-west3-docker.pkg.dev/mycel-dev-1348/mycel/api:latest
+docker build -f packages/api/Dockerfile -t europe-west3-docker.pkg.dev/<your-project-id>/mycel/api:latest .
+docker push europe-west3-docker.pkg.dev/<your-project-id>/mycel/api:latest
 cd infra/terraform/environments/dev && terraform apply
 ```
 
@@ -141,7 +141,7 @@ Create `scripts/deploy.sh` that:
 ### Step 9: Smoke test
 
 ```bash
-SERVICE_URL=$(gcloud run services describe mycel-api --region=europe-west3 --project=mycel-dev-1348 --format='value(status.url)')
+SERVICE_URL=$(gcloud run services describe mycel-api --region=europe-west3 --project=<your-project-id> --format='value(status.url)')
 curl "$SERVICE_URL/health"
 ```
 

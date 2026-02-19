@@ -10,7 +10,7 @@ Restructure the existing `infrastructure/` directory to match the task spec, pro
 - Modules: `cloud-run/`, `storage/`, `vertex-ai/` (speculative, not matching task)
 - Environments: `dev/` and `prod/` (minimal, reference storage + vertex-ai)
 - No Firestore module, no IAM module, no Artifact Registry module
-- Backend bucket name: `mycel-terraform-state` (task wants `mycel-terraform-state-1348`)
+- Backend bucket name: `mycel-terraform-state` (task wants `<your-project-id>-terraform-state`)
 - Region defaults to `europe-west1` (task wants `europe-west3`)
 - Root-level backend.tf/providers.tf are shared – but task spec puts these per-environment
 
@@ -95,13 +95,13 @@ Keep the existing module but adapt it for the task spec:
 
 ### Step 6: Create `environments/dev/` files
 
-**`providers.tf`** — Google provider config + GCS backend (bucket: `mycel-terraform-state-1348`, prefix: `dev`)
+**`providers.tf`** — Google provider config + GCS backend (bucket: `<your-project-id>-terraform-state`, prefix: `dev`)
 
 **`versions.tf`** — required_version >= 1.5.0, google provider ~> 5.0
 
 **`variables.tf`** — project_id, region (default europe-west3), environment
 
-**`terraform.tfvars.example`** — template with mycel-dev-1348 values
+**`terraform.tfvars.example`** — template with <your-project-id> values
 
 **`main.tf`** — Composes modules:
 1. Enable required GCP APIs via `google_project_service`

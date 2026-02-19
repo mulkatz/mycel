@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
-    bucket = "mycel-terraform-state-1348"
+    bucket = "your-terraform-state-bucket"
     prefix = "dev"
   }
 }
