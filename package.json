@@ -1,8 +1,26 @@
 {
   "name": "mycel",
-  "version": "0.1.0",
+  "version": "0.7.0",
   "private": true,
-  "description": "AI-powered Universal Knowledge Engine",
+  "description": "AI-powered Universal Knowledge Engine — captures unstructured knowledge through conversations and structures it using multi-agent AI",
+  "author": "Franz Benthin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mulkatz/mycel.git"
+  },
+  "homepage": "https://github.com/mulkatz/mycel",
+  "keywords": [
+    "ai",
+    "knowledge-engine",
+    "multi-agent",
+    "vertex-ai",
+    "langgraph",
+    "typescript",
+    "rag",
+    "conversational-ai",
+    "firestore"
+  ],
   "workspaces": [
     "packages/shared",
     "packages/schemas",

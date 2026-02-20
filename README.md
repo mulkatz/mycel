@@ -1,5 +1,8 @@
 # Mycel
 
+[![CI](https://github.com/mulkatz/mycel/actions/workflows/ci.yml/badge.svg)](https://github.com/mulkatz/mycel/actions/workflows/ci.yml)
+![Version](https://img.shields.io/badge/version-0.7.0-blue)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
 ![Status: Active Development](https://img.shields.io/badge/status-active%20development-brightgreen)
 
 Mycel is an AI-powered Universal Knowledge Engine that captures unstructured knowledge through natural, multi-turn conversations and transforms it into structured, queryable information. Configured via JSON schemas — a Domain Schema (what to capture) and a Persona Schema (how to communicate) — the same engine can power any knowledge collection use case: a village chronicle, a biography project, or a product knowledge base.
@@ -163,7 +166,7 @@ mycel/
 
 ## Frontend
 
-The web interface is in a separate repository: [mycel-web](https://github.com/Franjoo/mycel-web)
+The web interface is in a separate repository: [mycel-web](https://github.com/mulkatz/mycel-web)
 
 ## Contributing
 

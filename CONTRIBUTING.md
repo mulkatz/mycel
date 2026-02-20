@@ -12,13 +12,13 @@ By participating, you are expected to uphold this code.
 
 ### Reporting Bugs
 
-- Use [GitHub Issues](https://github.com/Franjoo/mycel/issues) with the "bug" label
+- Use [GitHub Issues](https://github.com/mulkatz/mycel/issues) with the "bug" label
 - Include: steps to reproduce, expected behavior, actual behavior, environment details
 - Check existing issues first to avoid duplicates
 
 ### Suggesting Features
 
-- Open a [GitHub Issue](https://github.com/Franjoo/mycel/issues) with the "enhancement" label
+- Open a [GitHub Issue](https://github.com/mulkatz/mycel/issues) with the "enhancement" label
 - Describe the use case and proposed solution
 - Be open to discussion — there may be alternative approaches
 
@@ -53,5 +53,5 @@ an architectural change, please propose an ADR first.
 
 ## Questions?
 
-Open a [Discussion](https://github.com/Franjoo/mycel/discussions) for questions that
+Open a [Discussion](https://github.com/mulkatz/mycel/discussions) for questions that
 aren't bug reports or feature requests.
