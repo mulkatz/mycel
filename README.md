@@ -1,11 +1,19 @@
-# Mycel
+<p align="center">
+  <img src="assets/icon.png" alt="Mycel" width="128" height="128">
+</p>
 
-[![CI](https://github.com/mulkatz/mycel/actions/workflows/ci.yml/badge.svg)](https://github.com/mulkatz/mycel/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.7.0-blue)
-![License: MIT](https://img.shields.io/badge/license-MIT-green)
-![Status: Active Development](https://img.shields.io/badge/status-active%20development-brightgreen)
+<h1 align="center">Mycel</h1>
 
-Mycel is an AI-powered Universal Knowledge Engine that captures unstructured knowledge through natural, multi-turn conversations and transforms it into structured, queryable information. Configured via JSON schemas — a Domain Schema (what to capture) and a Persona Schema (how to communicate) — the same engine can power any knowledge collection use case: a village chronicle, a biography project, or a product knowledge base.
+<p align="center">AI-powered Universal Knowledge Engine. Captures unstructured knowledge through conversations and structures it using multi-agent AI.</p>
+
+<p align="center">
+  <a href="https://github.com/mulkatz/mycel/actions/workflows/ci.yml"><img src="https://github.com/mulkatz/mycel/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/mulkatz/mycel/releases"><img src="https://img.shields.io/badge/version-0.7.0-blue" alt="Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/status-active%20development-brightgreen" alt="Status: Active Development">
+</p>
+
+Mycel captures unstructured knowledge through natural, multi-turn conversations and transforms it into structured, queryable information. Configured via JSON schemas — a Domain Schema (what to capture) and a Persona Schema (how to communicate) — the same engine can power any knowledge collection use case: a village chronicle, a biography project, or a product knowledge base.
 
 ### How It Feels
 
