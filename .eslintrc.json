@@ -36,7 +36,8 @@
     "@typescript-eslint/no-unnecessary-type-assertion": "warn",
     "@typescript-eslint/restrict-template-expressions": "warn",
     "@typescript-eslint/no-redundant-type-constituents": "warn",
-    "@typescript-eslint/prefer-promise-reject-errors": "warn"
+    "@typescript-eslint/prefer-promise-reject-errors": "warn",
+    "@typescript-eslint/restrict-plus-operands": "warn"
   },
   "overrides": [
     {
